@@ -40,6 +40,10 @@ export const api = createApi({
       login: b.mutation<any, { username: string; password: string }>({
         query: (body) => ({ url: "auth/login/", method: "POST", body }),
       }),
+      board: b.query<any, Record<string, any> | void>({
+        query: (params) => ({ url: "reports/board/", params: params || {} }),
+        providesTags: ["Dashboard", "Reservation"],
+      }),
       dashboard: b.query<any, Record<string, any> | void>({
         query: (params) => ({ url: "reports/dashboard/", params: params || {} }),
         providesTags: ["Dashboard"],

@@ -93,12 +93,15 @@ class Payment(models.Model):
     class Method(models.TextChoices):
         CASH = "cash", "نقدي"
         CARD = "card", "بطاقة"
-        TRANSFER = "transfer", "تحويل"
+        CHEQUE = "cheque", "شيك"
+        TRANSFER = "transfer", "تحويل بنكي"
         ONLINE = "online", "دفع إلكتروني"
+        CITY_LEDGER = "city_ledger", "حساب آجل (شركة)"
+        WALLET = "wallet", "محفظة رقمية"
 
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="payments")
     amount = models.DecimalField("المبلغ", max_digits=10, decimal_places=2)
-    method = models.CharField("طريقة الدفع", max_length=10, choices=Method.choices, default=Method.CASH)
+    method = models.CharField("طريقة الدفع", max_length=15, choices=Method.choices, default=Method.CASH)
     reference = models.CharField("مرجع", max_length=60, blank=True)
     received_by = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True)
     paid_at = models.DateTimeField("تاريخ الدفع", default=timezone.now)

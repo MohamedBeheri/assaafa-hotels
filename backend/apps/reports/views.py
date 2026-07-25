@@ -386,3 +386,107 @@ def night_audit_history(request):
     if hotel_id:
         qs = qs.filter(hotel_id=hotel_id)
     return Response(NightAuditSerializer(qs[:30], many=True).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def board(request):
+    """الشاشة الرئيسية بنمط OPERA — توافر الغرف، توقعات اليوم، الوصول/المقيمون/المغادرات."""
+    from apps.hotels.models import RoomType
+    from apps.billing.models import Charge
+    hotel_id = request.query_params.get("hotel")
+    today = timezone.localdate()
+
+    rooms = Room.objects.filter(is_active=True)
+    reservations = Reservation.objects.all()
+    room_types = RoomType.objects.filter(is_active=True)
+    payments = Payment.objects.all()
+    charges = Charge.objects.all()
+    if hotel_id:
+        rooms = rooms.filter(hotel_id=hotel_id)
+        reservations = reservations.filter(hotel_id=hotel_id)
+        room_types = room_types.filter(hotel_id=hotel_id)
+        payments = payments.filter(invoice__hotel_id=hotel_id)
+        charges = charges.filter(invoice__hotel_id=hotel_id)
+
+    total_rooms = rooms.count()
+    ACTIVE = [Reservation.Status.PENDING, Reservation.Status.CONFIRMED, Reservation.Status.CHECKED_IN]
+
+    def sold_on(d):
+        """عدد الغرف المباعة (محجوزة/مشغولة) بتاريخ."""
+        res = reservations.filter(status__in=ACTIVE, check_in__lte=d, check_out__gt=d)
+        return sum(r.rooms.count() for r in res)
+
+    # 1) ملخص توافر الغرف — 3 أيام
+    availability = []
+    for i in range(3):
+        d = today + timedelta(days=i)
+        sold = sold_on(d)
+        availability.append({"date": d.isoformat(), "sold": sold,
+                             "total": total_rooms, "available": max(total_rooms - sold, 0)})
+
+    # 2) التوافر حسب نوع الغرفة (اليوم)
+    room_type_avail = []
+    for rt in room_types:
+        rt_rooms = rt.rooms.filter(is_active=True).count()
+        rt_sold = sum(r.rooms.filter(room_type=rt).count()
+                      for r in reservations.filter(status__in=ACTIVE, check_in__lte=today, check_out__gt=today))
+        room_type_avail.append({"code": rt.code or rt.name_ar[:6], "name": rt.name_ar,
+                                "available": max(rt_rooms - rt_sold, 0), "sold": rt_sold, "total": rt_rooms})
+
+    # 3) توقعات اليوم — أفراد / مجموعات / مشغول الليلة
+    tonight = reservations.filter(status__in=ACTIVE, check_in__lte=today, check_out__gt=today)
+    ind = tonight.filter(block__isnull=True)
+    blk = tonight.filter(block__isnull=False)
+    def rp(qs):
+        r = sum(x.rooms.count() for x in qs)
+        p = sum(x.adults + x.children for x in qs)
+        v = sum(1 for x in qs if x.guest.is_vip)
+        return {"rooms": r, "persons": p, "vip": v}
+    occ_tonight = tonight.filter(status=Reservation.Status.CHECKED_IN)
+
+    # بلوكات لم تُسحب
+    from apps.reservations.models import GroupBlock
+    blocks = GroupBlock.objects.filter(status__in=["tentative", "confirmed"],
+                                       check_in__lte=today, check_out__gt=today)
+    if hotel_id:
+        blocks = blocks.filter(hotel_id=hotel_id)
+    not_picked = sum(max(b.total_rooms - b.picked_up, 0) for b in blocks)
+
+    occupied_rooms = sum(x.rooms.count() for x in occ_tonight)
+    pct_occ = round(occupied_rooms / total_rooms * 100, 2) if total_rooms else 0
+    min_available = min((a["available"] for a in availability), default=0)
+
+    room_revenue = float(sum((c.total for c in charges.filter(kind=Charge.Kind.ROOM, created_at__date=today)), Decimal("0")))
+    total_revenue = float(sum((c.total for c in charges.filter(created_at__date=today)), Decimal("0")))
+    rooms_sold_today = sold_on(today)
+    adr = round(room_revenue / rooms_sold_today, 2) if rooms_sold_today else 0
+    revpar = round(room_revenue / total_rooms, 2) if total_rooms else 0
+
+    # 4) الوصول / المقيمون / المغادرات (غرف + أشخاص)
+    def counts(qs):
+        return {"rooms": sum(x.rooms.count() for x in qs),
+                "adults": sum(x.adults for x in qs),
+                "children": sum(x.children for x in qs)}
+    arrivals_exp = reservations.filter(check_in=today, status__in=[Reservation.Status.CONFIRMED, Reservation.Status.PENDING])
+    arrivals_done = reservations.filter(check_in=today, status=Reservation.Status.CHECKED_IN)
+    in_house = reservations.filter(status=Reservation.Status.CHECKED_IN)
+    dep_exp = reservations.filter(check_out=today, status=Reservation.Status.CHECKED_IN)
+    dep_done = reservations.filter(check_out=today, status=Reservation.Status.CHECKED_OUT)
+
+    return Response({
+        "date": today.isoformat(),
+        "availability": availability,
+        "room_type_availability": room_type_avail,
+        "projections": {
+            "individuals": rp(ind), "blocks": rp(blk), "occupied_tonight": rp(occ_tonight),
+            "block_rooms_not_picked_up": not_picked,
+            "percent_occupied": pct_occ,
+            "min_available": min_available,
+            "room_revenue": room_revenue, "total_revenue": total_revenue,
+            "adr": adr, "revpar": revpar,
+        },
+        "arrivals": {"expected": arrivals_exp.count(), "arrived": arrivals_done.count(), **counts(arrivals_exp)},
+        "in_house": {"rooms": occupied_rooms, **counts(in_house)},
+        "departures": {"expected": dep_exp.count(), "checked_out": dep_done.count(), **counts(dep_done)},
+    })

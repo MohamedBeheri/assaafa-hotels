@@ -30,7 +30,7 @@ export default function Invoices() {
   const pay = async () => {
     const v = await form.validateFields();
     try {
-      await addPayment({ invoice: current.id, amount: v.amount, method: v.method }).unwrap();
+      await addPayment({ invoice: current.id, amount: v.amount, method: v.method, reference: v.reference || "" }).unwrap();
       message.success(t("saved")); form.resetFields();
     } catch { message.error("خطأ"); }
   };
@@ -133,10 +133,12 @@ export default function Invoices() {
               <Form.Item name="amount" rules={[{ required: true }]} initialValue={current.balance}>
                 <InputNumber placeholder={t("amount")} />
               </Form.Item>
+              <Form.Item name="reference"><Input placeholder="مرجع (رقم الشيك/التحويل)" style={{ width: 150 }} /></Form.Item>
               <Form.Item name="method" initialValue="cash">
-                <Select style={{ width: 120 }} options={[
+                <Select style={{ width: 130 }} options={[
                   { value: "cash", label: "نقدي" }, { value: "card", label: "بطاقة" },
-                  { value: "transfer", label: "تحويل" }]} />
+                  { value: "cheque", label: "شيك" }, { value: "transfer", label: "تحويل بنكي" },
+                  { value: "online", label: "دفع إلكتروني" }]} />
               </Form.Item>
               <Button type="primary" onClick={pay}>{t("addPayment")}</Button>
             </Form>

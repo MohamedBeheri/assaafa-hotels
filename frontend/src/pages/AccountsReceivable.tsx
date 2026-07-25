@@ -112,7 +112,7 @@ export default function AccountsReceivable() {
             min={0} max={settleFor?.outstanding} addonAfter="ر.س" />
           <Select value={method} onChange={setMethod} style={{ width: "100%" }}
             options={[{ value: "transfer", label: "تحويل بنكي" }, { value: "cash", label: "نقدي" },
-              { value: "card", label: "بطاقة" }]} />
+              { value: "cheque", label: "شيك" }, { value: "card", label: "بطاقة" }]} />
         </Space>
       </Modal>
     </div>

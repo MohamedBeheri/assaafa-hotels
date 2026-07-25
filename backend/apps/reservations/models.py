@@ -104,7 +104,8 @@ class Deposit(models.Model):
     class Method(models.TextChoices):
         CASH = "cash", "نقدي"
         CARD = "card", "بطاقة"
-        TRANSFER = "transfer", "تحويل"
+        CHEQUE = "cheque", "شيك"
+        TRANSFER = "transfer", "تحويل بنكي"
         ONLINE = "online", "دفع إلكتروني"
 
     reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name="deposits")

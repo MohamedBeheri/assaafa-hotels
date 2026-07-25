@@ -155,7 +155,8 @@ export default function Reservations() {
             min={0} addonAfter="ر.س" placeholder={t("amount")} autoFocus />
           <Select value={depMethod} onChange={setDepMethod} style={{ width: "100%" }}
             options={[{ value: "cash", label: "نقدي" }, { value: "card", label: "بطاقة" },
-              { value: "transfer", label: "تحويل" }, { value: "online", label: "إلكتروني" }]} />
+              { value: "cheque", label: "شيك" }, { value: "transfer", label: "تحويل بنكي" },
+              { value: "online", label: "إلكتروني" }]} />
         </Space>
       </Modal>
     </Card>
