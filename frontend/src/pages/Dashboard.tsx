@@ -19,14 +19,14 @@ const statusColors: Record<string, string> = {
 /* صف حالة تدبير — تفاعلي */
 function HKRow({ icon, color, data, hk, nav }: any) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", borderRadius: 12, padding: 9, transition: ".15s" }}
+    <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", borderRadius: 12, padding: 8, transition: ".15s" }}
       onClick={() => nav(`/rooms?hk=${hk}`)}
       onMouseEnter={(e) => (e.currentTarget.style.background = "#F7F5EE")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-      <div style={{ width: 44, height: 44, borderRadius: "50%", background: color, color: "#fff", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
-      <div style={{ background: "#F7F5EE", borderRadius: 10, padding: "8px 14px", flex: 1 }}>
+      <div style={{ width: 40, height: 40, borderRadius: "50%", background: color, color: "#fff", display: "grid", placeItems: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+      <div style={{ background: "#F7F5EE", borderRadius: 10, padding: "7px 14px", flex: 1 }}>
         {[["مشغولة", data.occupied], ["مخصّصة", data.assigned], ["شاغرة", data.vacant]].map(([l, v]: any) => (
-          <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "1px 0" }}>
+          <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "1px 0" }}>
             <span style={{ color: "#8d8775" }}>{l}</span><b style={{ color, fontVariantNumeric: "tabular-nums" }}>{v}</b>
           </div>
         ))}
@@ -85,17 +85,24 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* ═══ الصف الرئيسي بنمط OPERA ═══ */}
-      <Row gutter={[16, 16]}>
-        {/* ملخص التوافر */}
-        <Col xs={24} lg={9}>
-          <Card title={t("availabilitySummary")} styles={{ body: { padding: 16 } }}>
+      {/* ═══ الصف 1: شريط البطاقات الأفقي (متساوي الارتفاع) ═══ */}
+      <Row gutter={[16, 16]} align="stretch">
+        <Col xs={12} lg={6}><ArrivalsTile arrived={b.arrivals.arrived} expected={b.arrivals.expected} onClick={() => nav("/front-office")} /></Col>
+        <Col xs={12} lg={6}><InHouseTile rooms={b.in_house.rooms} adults={b.in_house.adults} children={b.in_house.children} onClick={() => nav("/front-office")} /></Col>
+        <Col xs={12} lg={6}><DeparturesTile expected={b.departures.expected} checkedOut={b.departures.checked_out} adults={b.departures.adults} children={b.departures.children} onClick={() => nav("/front-office")} /></Col>
+        <Col xs={12} lg={6}><MaxAvailTile value={b.max_available} onClick={() => nav("/rooms?status=available")} /></Col>
+      </Row>
+
+      {/* ═══ الصف 2: التوافر + التوقعات + مصفوفة الغرف (3 أعمدة متساوية) ═══ */}
+      <Row gutter={[16, 16]} align="stretch" style={{ marginTop: 16 }}>
+        <Col xs={24} lg={8}>
+          <Card title={t("availabilitySummary")} style={{ height: "100%" }} styles={{ body: { padding: 16 } }}>
             <Row gutter={10}>
               {b.availability.map((a: any) => (
                 <Col span={8} key={a.date}>
                   <div style={{ textAlign: "center", background: "#EAF4DC", borderRadius: 12, padding: "12px 6px" }}>
                     <div style={{ fontSize: 11.5, color: "#6d6753", marginBottom: 8 }}>{a.date.slice(5)}</div>
-                    <div style={{ fontSize: 30, fontWeight: 900, color: BRAND.greenDark, fontVariantNumeric: "tabular-nums" }}>{a.available}</div>
+                    <div style={{ fontSize: 28, fontWeight: 900, color: BRAND.greenDark, fontVariantNumeric: "tabular-nums" }}>{a.available}</div>
                     <div style={{ fontSize: 11, color: "#8d8775" }}>متاح / {a.total}</div>
                     <div style={{ fontSize: 11, color: "#B8985A", marginTop: 4 }}>مباع {a.sold}</div>
                   </div>
@@ -116,10 +123,9 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        {/* توقعات اليوم */}
-        <Col xs={24} lg={9}>
+        <Col xs={24} lg={8}>
           <Card title={<>{t("dailyProjections")} <span style={{ fontSize: 12, color: "#8c8c8c", fontWeight: 400 }} dir="ltr">{b.date}</span></>}
-            styles={{ body: { padding: 16 } }}>
+            style={{ height: "100%" }} styles={{ body: { padding: 16 } }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <ProjBox title={t("individuals")} color="#E8912B" {...p.individuals} />
               <ProjBox title={t("blocks")} color="#1F8A99" {...p.blocks} />
@@ -142,24 +148,12 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        {/* الوصول + النزلاء + المغادرات (أيقونات OPERA) */}
-        <Col xs={24} lg={6}>
-          <Row gutter={[16, 16]}>
-            <Col xs={12} lg={24}><ArrivalsTile arrived={b.arrivals.arrived} expected={b.arrivals.expected} onClick={() => nav("/front-office")} /></Col>
-            <Col xs={12} lg={24}><InHouseTile rooms={b.in_house.rooms} adults={b.in_house.adults} children={b.in_house.children} onClick={() => nav("/front-office")} /></Col>
-            <Col xs={24} lg={24}><DeparturesTile expected={b.departures.expected} checkedOut={b.departures.checked_out} adults={b.departures.adults} children={b.departures.children} onClick={() => nav("/front-office")} /></Col>
-          </Row>
-        </Col>
-      </Row>
-
-      {/* ═══ حالة الغرف + أقصى متاح ═══ */}
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col xs={24} lg={12}>
-          <Card title={<>🛏 {t("roomStatusBoard")}</>} styles={{ body: { padding: 14 } }}>
+        <Col xs={24} lg={8}>
+          <Card title={t("roomStatusBoard")} style={{ height: "100%" }} styles={{ body: { padding: 14 } }}>
             <HKRow icon={<CheckOutlined />} color="#4E9A3A" data={b.room_status_matrix.clean} hk="clean" nav={nav} />
             <HKRow icon={<StarOutlined />} color="#3B9CB3" data={b.room_status_matrix.inspected} hk="inspected" nav={nav} />
             <HKRow icon={<DeleteOutlined />} color="#C0392B" data={b.room_status_matrix.dirty} hk="dirty" nav={nav} />
-            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
               {[["Skip", b.skip, "#C0392B"], ["Sleep", b.sleep, "#C0392B"], ["OOO", b.out_of_order, "#E67E22"]].map(([l, v, c]: any) => (
                 <div key={l} style={{ flex: 1, textAlign: "center", background: "#F7F5EE", borderRadius: 10, padding: "8px 4px" }}>
                   <div style={{ fontSize: 22, fontWeight: 900, color: c, fontVariantNumeric: "tabular-nums" }}>{v}</div>
@@ -169,25 +163,24 @@ export default function Dashboard() {
             </div>
           </Card>
         </Col>
-        <Col xs={12} lg={5}><MaxAvailTile value={b.max_available} onClick={() => nav("/rooms?status=available")} /></Col>
-        <Col xs={12} lg={7}>
-          <Card title={t("roomStatus")} styles={{ body: { padding: 14 } }}>
+      </Row>
+
+      {/* ═══ الصف 3: حالة الغرف التفصيلية + الإيراد ═══ */}
+      <Row gutter={[16, 16]} align="stretch" style={{ marginTop: 16 }}>
+        <Col xs={24} lg={8}>
+          <Card title={t("roomStatus")} style={{ height: "100%" }} styles={{ body: { padding: 16 } }}>
             {Object.entries(data.room_status).map(([k, v]) => (
-              <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
-                <Tag color={statusColors[k]} style={{ minWidth: 66, textAlign: "center" }}>{t(k)}</Tag>
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <Tag color={statusColors[k]} style={{ minWidth: 68, textAlign: "center" }}>{t(k)}</Tag>
                 <Progress percent={data.total_rooms ? Math.round((v as number) / data.total_rooms * 100) : 0} size="small" style={{ flex: 1, marginInline: 8 }} showInfo={false} strokeColor={BRAND.green} />
                 <b style={{ fontVariantNumeric: "tabular-nums", minWidth: 22, textAlign: "end" }}>{v as number}</b>
               </div>
             ))}
           </Card>
         </Col>
-      </Row>
-
-      {/* ═══ الإيراد ═══ */}
-      <Row style={{ marginTop: 16 }}>
-        <Col xs={24}>
-          <Card title={t("revenue7")}>
-            <ResponsiveContainer width="100%" height={230}>
+        <Col xs={24} lg={16}>
+          <Card title={t("revenue7")} style={{ height: "100%" }}>
+            <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={data.revenue_series}>
                 <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={BRAND.green} stopOpacity={0.6} />
