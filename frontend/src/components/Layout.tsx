@@ -25,29 +25,71 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: hotels } = apiHooks.useGetHotelsQuery();
   const isAdmin = user?.role === "admin";
 
+  // القائمة المجمّعة — فئات رئيسية بفروع (نمط OPERA)
   const items = [
     { key: "/", icon: <DashboardOutlined />, label: t("dashboard") },
-    { key: "/front-office", icon: <ThunderboltOutlined />, label: t("frontOffice") },
-    { key: "/calendar", icon: <TableOutlined />, label: t("calendar") },
-    { key: "/reservations", icon: <CalendarOutlined />, label: t("reservations") },
-    { key: "/night-audit", icon: <MoonOutlined />, label: t("nightAudit") },
-    { key: "/group-blocks", icon: <UsergroupAddOutlined />, label: t("groupBlocks") },
-    { key: "/rooms", icon: <HomeOutlined />, label: t("rooms") },
-    { key: "/guests", icon: <TeamOutlined />, label: t("guests") },
-    { key: "/invoices", icon: <FileTextOutlined />, label: t("invoices") },
-    { key: "/companies", icon: <ShopOutlined />, label: t("companies") },
-    { key: "/accounts-receivable", icon: <AccountBookOutlined />, label: t("accountsReceivable") },
-    { key: "/transaction-codes", icon: <NumberOutlined />, label: t("transactionCodes") },
-    { key: "/pos", icon: <ShoppingCartOutlined />, label: t("pos") },
-    { key: "/menu", icon: <CoffeeOutlined />, label: t("menuMgmt") },
-    { key: "/housekeeping", icon: <ClearOutlined />, label: t("housekeeping") },
-    { key: "/pricing", icon: <TagsOutlined />, label: t("pricing") },
+    {
+      key: "g-front", icon: <ThunderboltOutlined />, label: t("navFrontDesk"), children: [
+        { key: "/front-office", icon: <ThunderboltOutlined />, label: t("frontOffice") },
+        { key: "/calendar", icon: <TableOutlined />, label: t("calendar") },
+        { key: "/reservations", icon: <CalendarOutlined />, label: t("reservations") },
+        { key: "/group-blocks", icon: <UsergroupAddOutlined />, label: t("groupBlocks") },
+        { key: "/night-audit", icon: <MoonOutlined />, label: t("nightAudit") },
+      ],
+    },
+    {
+      key: "g-rooms", icon: <HomeOutlined />, label: t("navRoomsMgmt"), children: [
+        { key: "/rooms", icon: <HomeOutlined />, label: t("rooms") },
+        { key: "/housekeeping", icon: <ClearOutlined />, label: t("housekeeping") },
+        { key: "/pricing", icon: <TagsOutlined />, label: t("pricing") },
+        { key: "/room-types", icon: <AppstoreOutlined />, label: t("roomTypes") },
+      ],
+    },
+    {
+      key: "g-crm", icon: <TeamOutlined />, label: t("navClientRel"), children: [
+        { key: "/guests", icon: <TeamOutlined />, label: t("guests") },
+        { key: "/companies", icon: <ShopOutlined />, label: t("companies") },
+      ],
+    },
+    {
+      key: "g-fin", icon: <DollarOutlined />, label: t("navFinancials"), children: [
+        { key: "/invoices", icon: <FileTextOutlined />, label: t("invoices") },
+        { key: "/accounts-receivable", icon: <AccountBookOutlined />, label: t("accountsReceivable") },
+        { key: "/transaction-codes", icon: <NumberOutlined />, label: t("transactionCodes") },
+        { key: "/finance", icon: <DollarOutlined />, label: t("finance") },
+      ],
+    },
+    {
+      key: "g-pos", icon: <ShoppingCartOutlined />, label: t("navPos"), children: [
+        { key: "/pos", icon: <ShoppingCartOutlined />, label: t("pos") },
+        { key: "/menu", icon: <CoffeeOutlined />, label: t("menuMgmt") },
+      ],
+    },
     { key: "/reports", icon: <BarChartOutlined />, label: t("analytics") },
-    { key: "/finance", icon: <DollarOutlined />, label: t("finance") },
-    { key: "/hotels", icon: <BankOutlined />, label: t("hotels") },
-    { key: "/room-types", icon: <AppstoreOutlined />, label: t("roomTypes") },
-    ...(isAdmin ? [{ key: "/users", icon: <UserOutlined />, label: t("users") }] : []),
+    {
+      key: "g-setup", icon: <BankOutlined />, label: t("navSetup"), children: [
+        { key: "/hotels", icon: <BankOutlined />, label: t("hotels") },
+        ...(isAdmin ? [{ key: "/users", icon: <UserOutlined />, label: t("users") }] : []),
+      ],
+    },
   ];
+
+  // افتح الفئة التي تحتوي المسار الحالي
+  const groupOf: Record<string, string> = {
+    "/front-office": "g-front", "/calendar": "g-front", "/reservations": "g-front", "/group-blocks": "g-front", "/night-audit": "g-front",
+    "/rooms": "g-rooms", "/housekeeping": "g-rooms", "/pricing": "g-rooms", "/room-types": "g-rooms",
+    "/guests": "g-crm", "/companies": "g-crm",
+    "/invoices": "g-fin", "/accounts-receivable": "g-fin", "/transaction-codes": "g-fin", "/finance": "g-fin",
+    "/pos": "g-pos", "/menu": "g-pos",
+    "/hotels": "g-setup", "/users": "g-setup",
+  };
+  const [openKeys, setOpenKeys] = React.useState<string[]>(() => {
+    const g = groupOf[loc.pathname]; return g ? [g] : [];
+  });
+  React.useEffect(() => {
+    const g = groupOf[loc.pathname];
+    if (g && !openKeys.includes(g)) setOpenKeys((k) => [...k, g]);
+  }, [loc.pathname]);
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
@@ -87,7 +129,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <div style={{ flex: 1, overflowY: "auto" }}>
           <Menu mode="inline" selectedKeys={[loc.pathname]} items={items}
-            onClick={(e) => nav(e.key)} style={{ borderInlineEnd: 0 }} />
+            openKeys={openKeys} onOpenChange={(k) => setOpenKeys(k as string[])}
+            onClick={(e) => { if (!e.key.startsWith("g-")) nav(e.key); }} style={{ borderInlineEnd: 0 }} />
         </div>
         {/* رابط موقع العميل — منفصل بشكل جمالي */}
         <a href="/site" target="_blank" rel="noopener noreferrer" className="guest-site-link">

@@ -1,4 +1,10 @@
 export default {
+  navFrontDesk: "المكتب الأمامي",
+  navRoomsMgmt: "إدارة الغرف",
+  navClientRel: "العلاقات",
+  navFinancials: "الحسابات",
+  navPos: "نقطة البيع والمطعم",
+  navSetup: "الإعدادات",
   passerBy: "فوليو عابر",
   fastPost: "ترحيل سريع",
   split: "تقسيم",

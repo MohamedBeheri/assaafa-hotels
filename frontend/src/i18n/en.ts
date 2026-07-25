@@ -1,4 +1,10 @@
 export default {
+  navFrontDesk: "Front Desk",
+  navRoomsMgmt: "Rooms Management",
+  navClientRel: "Client Relations",
+  navFinancials: "Financials",
+  navPos: "POS & Restaurant",
+  navSetup: "Setup",
   passerBy: "Passer-By Folio",
   fastPost: "Fast Posting",
   split: "Split",
