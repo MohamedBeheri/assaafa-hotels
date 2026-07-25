@@ -1,17 +1,41 @@
-import { Row, Col, Card, Progress, Table, Tag, Spin, Button, Badge, App as AntApp } from "antd";
+import { Row, Col, Card, Progress, Table, Tag, Spin, Button, Badge, App as AntApp, Tooltip as ATooltip } from "antd";
 import {
   LoginOutlined, LogoutOutlined, TeamOutlined, GlobalOutlined, CheckCircleOutlined,
-  UserOutlined, SmileOutlined,
+  UserOutlined, SmileOutlined, CheckOutlined, StarOutlined, DeleteOutlined,
 } from "@ant-design/icons";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiHooks } from "../app/api";
 import { useApp } from "../app/context";
 import { BRAND } from "../theme";
 
 const money = (v: number) => `${(v || 0).toLocaleString()} ر.س`;
+
+/* صف حالة تدبير في مصفوفة الغرف — تفاعلي (ينقل لصفحة الغرف مفلترة) */
+function HKRow({ icon, color, data, hk, nav }: any) {
+  const go = () => nav(`/rooms?hk=${hk}`);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+      borderRadius: 12, padding: 10, transition: ".15s" }}
+      onClick={go}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "#F7F5EE")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+      <div style={{ width: 48, height: 48, borderRadius: "50%", background: color,
+        color: "#fff", display: "grid", placeItems: "center", fontSize: 22, flexShrink: 0 }}>{icon}</div>
+      <div style={{ background: "#F7F5EE", borderRadius: 10, padding: "8px 14px", flex: 1 }}>
+        {[["مشغولة", data.occupied], ["مخصّصة", data.assigned], ["شاغرة", data.vacant]].map(([l, v]: any) => (
+          <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "1px 0" }}>
+            <span style={{ color: "#8d8775" }}>{l}</span>
+            <b style={{ color, fontVariantNumeric: "tabular-nums" }}>{v}</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function ProjBox({ title, color, rooms, persons, vip }: any) {
   return (
@@ -54,6 +78,7 @@ const statusColors: Record<string, string> = {
 export default function Dashboard() {
   const { t } = useTranslation();
   const { message } = AntApp.useApp();
+  const nav = useNavigate();
   const { hotel } = useApp();
   const params = hotel ? { hotel } : undefined;
   const { data: b } = apiHooks.useBoardQuery(params);
@@ -86,6 +111,92 @@ export default function Dashboard() {
             ]} />
         </Card>
       )}
+
+      {/* ═══ لوحة حالة الغرف بنمط OPERA — تفاعلية ═══ */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        {/* الوصول */}
+        <Col xs={12} lg={5}>
+          <Card className="stat-card" hoverable onClick={() => nav("/front-office")} styles={{ body: { padding: 18, textAlign: "center" } }}>
+            <div style={{ fontWeight: 800, marginBottom: 12 }}>{t("arrivalsToday")}</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 10 }}>
+              <span style={{ color: "#bbb", fontSize: 12 }}>0</span>
+              <div style={{ flex: 1, height: 4, background: "linear-gradient(90deg,#8E5AA8," + BRAND.gold + ")", borderRadius: 2, position: "relative" }}>
+                <div style={{ position: "absolute", top: -8, insetInlineStart: `${b.arrivals.expected ? (b.arrivals.arrived / (b.arrivals.expected || 1)) * 100 : 0}%`, transform: "translateX(-50%)" }}>
+                  <UserOutlined style={{ color: "#8E5AA8" }} />
+                </div>
+              </div>
+              <span style={{ color: "#bbb", fontSize: 12 }}>{b.arrivals.expected + b.arrivals.arrived}</span>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: "#8E5AA8", fontVariantNumeric: "tabular-nums" }}>{b.arrivals.arrived}</div>
+            <div style={{ fontSize: 12, color: "#8d8775" }}>{t("expectedArr")}: <b>{b.arrivals.expected}</b></div>
+          </Card>
+        </Col>
+
+        {/* حالة الغرف — المصفوفة */}
+        <Col xs={24} lg={9}>
+          <Card title={<><span style={{ marginInlineEnd: 6 }}>🛏</span>{t("roomStatusBoard")}</>} styles={{ body: { padding: 14 } }}>
+            <HKRow icon={<CheckOutlined />} color="#4E9A3A" data={b.room_status_matrix.clean} hk="clean" nav={nav} />
+            <HKRow icon={<StarOutlined />} color="#3B9CB3" data={b.room_status_matrix.inspected} hk="inspected" nav={nav} />
+            <HKRow icon={<DeleteOutlined />} color="#C0392B" data={b.room_status_matrix.dirty} hk="dirty" nav={nav} />
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              {[["Skip", b.skip, "#C0392B"], ["Sleep", b.sleep, "#C0392B"], ["OOO", b.out_of_order, "#E67E22"]].map(([l, v, c]: any) => (
+                <div key={l} style={{ flex: 1, textAlign: "center", background: "#F7F5EE", borderRadius: 10, padding: "8px 4px" }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: c, fontVariantNumeric: "tabular-nums" }}>{v}</div>
+                  <div style={{ fontSize: 11, color: "#8d8775" }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Col>
+
+        {/* Max available + In House */}
+        <Col xs={12} lg={5}>
+          <ATooltip title="الغرف المتاحة للبيع">
+            <Card className="stat-card" hoverable onClick={() => nav("/rooms?status=available")}
+              styles={{ body: { padding: 18, textAlign: "center" } }}>
+              <div style={{ fontWeight: 800, marginBottom: 14 }}>{t("maxAvailable")}</div>
+              <div style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(135deg,#1F8A99,#3B9CB3)",
+                display: "grid", placeItems: "center", margin: "0 auto", color: "#fff" }}>
+                <div style={{ fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{b.max_available}</div>
+              </div>
+            </Card>
+          </ATooltip>
+        </Col>
+        <Col xs={24} lg={5}>
+          <Card className="stat-card" hoverable onClick={() => nav("/front-office")} styles={{ body: { padding: 18 } }}>
+            <div style={{ fontWeight: 800, marginBottom: 10, textAlign: "center" }}>{t("inHouse")}</div>
+            <div style={{ textAlign: "center", fontSize: 30, fontWeight: 900, color: BRAND.green }}>{b.in_house.rooms}</div>
+            <div style={{ textAlign: "center", fontSize: 12, color: "#8d8775", marginBottom: 10 }}>غرفة مشغولة</div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 20, fontSize: 13, color: "#6d6753" }}>
+              <span><UserOutlined /> {b.in_house.adults} بالغ</span>
+              <span><SmileOutlined /> {b.in_house.children} طفل</span>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* المغادرات */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24}>
+          <Card title={t("departuresToday")} styles={{ body: { padding: 18 } }}>
+            <Row gutter={16}>
+              {[
+                { label: t("expectedDep"), rooms: b.departures.expected, adults: b.departures.adults, children: b.departures.children, color: "#8E5AA8" },
+                { label: t("checkedOut"), rooms: b.departures.checked_out, adults: b.departures.adults, children: b.departures.children, color: "#6d6753" },
+              ].map((d, i) => (
+                <Col xs={12} key={i} style={{ textAlign: "center", borderInlineEnd: i === 0 ? "1px solid #f0ede4" : "none" }}>
+                  <div style={{ color: "#8d8775", fontSize: 13, marginBottom: 6 }}>{d.label}</div>
+                  <div style={{ fontSize: 30, fontWeight: 900, color: d.color, fontVariantNumeric: "tabular-nums" }}>{d.rooms}</div>
+                  <div style={{ fontSize: 12, color: "#8d8775" }}>غرفة</div>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: 8, fontSize: 13, color: "#6d6753" }}>
+                    <span><UserOutlined /> {d.adults}</span><span><SmileOutlined /> {d.children}</span>
+                  </div>
+                </Col>
+              ))}
+            </Row>
+          </Card>
+        </Col>
+      </Row>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={9}>

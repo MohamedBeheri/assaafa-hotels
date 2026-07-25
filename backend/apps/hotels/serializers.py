@@ -35,6 +35,7 @@ class RoomSerializer(serializers.ModelSerializer):
     room_type_name = serializers.CharField(source="room_type.name_ar", read_only=True)
     hotel_name = serializers.CharField(source="hotel.name_ar", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    hk_status_display = serializers.CharField(source="get_hk_status_display", read_only=True)
     base_price = serializers.DecimalField(source="room_type.base_price", max_digits=10,
                                           decimal_places=2, read_only=True)
 

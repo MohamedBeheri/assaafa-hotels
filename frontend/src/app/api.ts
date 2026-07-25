@@ -78,6 +78,10 @@ export const api = createApi({
       globalSearch: b.query<any, Record<string, any>>({
         query: (params) => ({ url: "reports/search/", params }),
       }),
+      roomHkAction: b.mutation<any, { id: number; hk_status: string }>({
+        query: ({ id, hk_status }) => ({ url: `rooms/${id}/set_hk/`, method: "POST", body: { hk_status } }),
+        invalidatesTags: ["Room", "Dashboard"],
+      }),
       nightAuditRun: b.mutation<any, { hotel?: number }>({
         query: (body) => ({ url: "reports/night-audit/run/", method: "POST", body }),
         invalidatesTags: ["Reservation", "Room", "Dashboard"],

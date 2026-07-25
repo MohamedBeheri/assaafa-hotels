@@ -1,4 +1,13 @@
 export default {
+  roomStatusBoard: "Room Status",
+  maxAvailable: "Max Available Rooms",
+  expectedArr: "Expected Arrivals",
+  checkedOut: "Checked Out",
+  hkStatus: "Housekeeping",
+  clean: "Clean",
+  dirty: "Dirty",
+  inspected: "Inspected",
+  out_of_order: "Out of Order",
   availabilitySummary: "Rooms Availability Summary",
   dailyProjections: "Daily Projections",
   individuals: "Individuals",

@@ -98,6 +98,15 @@ class Room(models.Model):
     floor = models.ForeignKey(Floor, on_delete=models.SET_NULL, null=True, blank=True, related_name="rooms")
     number = models.CharField("رقم الغرفة", max_length=20)
     status = models.CharField("الحالة", max_length=20, choices=Status.choices, default=Status.AVAILABLE)
+
+    class HKStatus(models.TextChoices):
+        CLEAN = "clean", "نظيفة"
+        DIRTY = "dirty", "متسخة"
+        INSPECTED = "inspected", "مفحوصة"
+        OUT_OF_ORDER = "out_of_order", "خارج الخدمة"
+
+    hk_status = models.CharField("حالة التدبير", max_length=15,
+                                 choices=HKStatus.choices, default=HKStatus.CLEAN)
     notes = models.CharField("ملاحظات", max_length=255, blank=True)
     is_active = models.BooleanField("نشط", default=True)
 

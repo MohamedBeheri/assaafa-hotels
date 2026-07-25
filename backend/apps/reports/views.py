@@ -474,8 +474,33 @@ def board(request):
     dep_exp = reservations.filter(check_out=today, status=Reservation.Status.CHECKED_IN)
     dep_done = reservations.filter(check_out=today, status=Reservation.Status.CHECKED_OUT)
 
+    # مصفوفة حالة الغرف (تدبير × إشغال) بنمط OPERA
+    def occ_bucket(r):
+        if r.status == Room.Status.OCCUPIED:
+            return "occupied"
+        if r.status == Room.Status.RESERVED:
+            return "assigned"
+        return "vacant"
+    hk_matrix = {}
+    for hk in ["clean", "inspected", "dirty", "out_of_order"]:
+        hk_matrix[hk] = {"occupied": 0, "assigned": 0, "vacant": 0}
+    all_rooms = list(rooms)
+    for r in all_rooms:
+        hk = r.hk_status or "clean"
+        if hk not in hk_matrix:
+            hk = "clean"
+        hk_matrix[hk][occ_bucket(r)] += 1
+    ooo = sum(1 for r in all_rooms if r.status in (Room.Status.MAINTENANCE, Room.Status.BLOCKED))
+    max_available = max(total_rooms - occupied_rooms - ooo, 0)
+    # Skip = مغادرة متوقعة لم تُسجّل، Sleep = مشغولة نظامياً لكن قد تكون فارغة (تقدير)
+    skip = reservations.filter(check_out__lt=today, status=Reservation.Status.CHECKED_IN).count()
+    sleep = 0
+
     return Response({
         "date": today.isoformat(),
+        "room_status_matrix": hk_matrix,
+        "max_available": max_available,
+        "skip": skip, "sleep": sleep, "out_of_order": ooo,
         "availability": availability,
         "room_type_availability": room_type_avail,
         "projections": {

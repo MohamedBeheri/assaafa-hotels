@@ -131,4 +131,16 @@ class Command(BaseCommand):
                 inv.save()
             self.stdout.write("✓ شركات ووكلاء + حساب آجل")
 
+        # 7) حالات تدبير متنوّعة للعرض
+        import random as _r
+        from apps.hotels.models import Room as _Room
+        if not _Room.objects.filter(hk_status="inspected").exists():
+            for _rm in _Room.objects.all():
+                if _rm.status == _Room.Status.OCCUPIED:
+                    _rm.hk_status = _r.choice(["dirty", "dirty", "clean"])
+                else:
+                    _rm.hk_status = _r.choice(["clean", "clean", "inspected", "dirty"])
+                _rm.save()
+            self.stdout.write("✓ حالات التدبير")
+
         self.stdout.write(self.style.SUCCESS("تمت التعبئة الإضافية ✓"))

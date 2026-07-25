@@ -39,7 +39,8 @@ class ReservationViewSet(viewsets.ModelViewSet):
         res.actual_check_out = timezone.now()
         res.save()
         for rr in res.rooms.all():
-            rr.room.status = Room.Status.CLEANING
+            rr.room.status = Room.Status.AVAILABLE
+            rr.room.hk_status = Room.HKStatus.DIRTY
             rr.room.save()
         return Response(ReservationSerializer(res).data)
 

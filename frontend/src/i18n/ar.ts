@@ -1,4 +1,13 @@
 export default {
+  roomStatusBoard: "حالة الغرف",
+  maxAvailable: "أقصى غرف متاحة",
+  expectedArr: "وصول متوقع",
+  checkedOut: "تم الخروج",
+  hkStatus: "حالة التدبير",
+  clean: "نظيفة",
+  dirty: "متسخة",
+  inspected: "مفحوصة",
+  out_of_order: "خارج الخدمة",
   availabilitySummary: "ملخص توافر الغرف",
   dailyProjections: "توقعات اليوم",
   individuals: "أفراد",

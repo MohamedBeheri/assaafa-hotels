@@ -1,3 +1,5 @@
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework import viewsets
 from .models import Hotel, Floor, Amenity, RoomType, Room
 from .serializers import (HotelSerializer, FloorSerializer, AmenitySerializer,
@@ -32,8 +34,19 @@ class RoomTypeViewSet(viewsets.ModelViewSet):
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.select_related("hotel", "room_type", "floor").all()
     serializer_class = RoomSerializer
-    filterset_fields = ["hotel", "room_type", "floor", "status", "is_active"]
+    filterset_fields = ["hotel", "room_type", "floor", "status", "hk_status", "is_active"]
     search_fields = ["number"]
+
+    @action(detail=True, methods=["post"])
+    def set_hk(self, request, pk=None):
+        """تغيير حالة التدبير (نظيفة/متسخة/مفحوصة/خارج الخدمة)."""
+        room = self.get_object()
+        hk = request.data.get("hk_status")
+        if hk not in [c[0] for c in Room.HKStatus.choices]:
+            return Response({"detail": "حالة غير صحيحة"}, status=400)
+        room.hk_status = hk
+        room.save()
+        return Response(RoomSerializer(room).data)
 
 
 from django.utils import timezone
@@ -64,15 +77,16 @@ class HousekeepingTaskViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
-        """إنهاء المهمة — لو الغرفة كانت قيد التنظيف تصبح متاحة."""
+        """إنهاء المهمة — الغرفة تصبح نظيفة."""
         task = self.get_object()
         task.status = HousekeepingTask.Status.DONE
         task.completed_at = timezone.now()
         task.save()
         room = task.room
+        room.hk_status = Room.HKStatus.CLEAN
         if room.status == Room.Status.CLEANING:
             room.status = Room.Status.AVAILABLE
-            room.save()
+        room.save()
         return Response(HousekeepingTaskSerializer(task).data)
 
     @action(detail=True, methods=["post"])
