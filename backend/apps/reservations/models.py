@@ -202,3 +202,27 @@ class FixedCharge(models.Model):
 
     def __str__(self):
         return f"{self.description} ({self.get_frequency_display()})"
+
+
+class ReservationAlert(models.Model):
+    """تنبيه/أثر على الحجز — يظهر منبثقاً عند تسجيل الدخول (نمط OPERA Alerts/Traces)."""
+    class Kind(models.TextChoices):
+        ALERT = "alert", "تنبيه"
+        TRACE = "trace", "أثر (مهمة قسم)"
+
+    reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name="alerts")
+    kind = models.CharField("النوع", max_length=8, choices=Kind.choices, default=Kind.ALERT)
+    message = models.CharField("الرسالة", max_length=255)
+    department = models.CharField("القسم", max_length=60, blank=True)
+    show_on_checkin = models.BooleanField("يظهر عند الدخول", default=True)
+    is_resolved = models.BooleanField("منجز", default=False)
+    created_by = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "تنبيه حجز"
+        verbose_name_plural = "تنبيهات الحجوزات"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()}: {self.message[:30]}"

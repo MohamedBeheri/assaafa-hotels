@@ -1,4 +1,12 @@
 export default {
+  passerBy: "Passer-By Folio",
+  fastPost: "Fast Posting",
+  split: "Split",
+  postCharge: "Post",
+  posted: "Posted",
+  create: "Create",
+  alerts: "Alerts",
+  addAlert: "Add Alert",
   transactionCodes: "Transaction Codes",
   regCard: "Reg Card",
   adjust: "Adjust",

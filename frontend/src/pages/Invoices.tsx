@@ -3,6 +3,7 @@ import {
   Card, Table, Tag, Button, Drawer, Descriptions, Divider, Form,
   InputNumber, Select, App as AntApp, Statistic, Row, Col, Input, Space, Modal,
 } from "antd";
+import { ThunderboltOutlined, UserAddOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import { apiHooks } from "../app/api";
 import { useApp } from "../app/context";
@@ -19,7 +20,55 @@ export default function Invoices() {
   const [invoiceAction] = apiHooks.useInvoiceActionMutation();
   const { data: services } = apiHooks.useGetServicesQuery();
   const { data: companies } = apiHooks.useGetCompaniesQuery();
+  const { data: hotels } = apiHooks.useGetHotelsQuery();
   const [reservationAction] = apiHooks.useReservationActionMutation();
+  const { data: tcodes } = apiHooks.useGetTransactionCodesQuery();
+  const [passerBy] = apiHooks.useInvoicePasserByMutation();
+  const [fastPost] = apiHooks.useInvoiceFastPostMutation();
+  // فوليو عابر
+  const [pbOpen, setPbOpen] = React.useState(false);
+  const [pbForm] = Form.useForm();
+  const createPasserBy = async () => {
+    const v = await pbForm.validateFields();
+    try {
+      const inv = await passerBy(v).unwrap();
+      message.success(t("saved")); setPbOpen(false); pbForm.resetFields();
+      setSel(inv);
+    } catch { message.error("خطأ"); }
+  };
+  // ترحيل سريع
+  const [fpOpen, setFpOpen] = React.useState(false);
+  const [fpInvoices, setFpInvoices] = React.useState<number[]>([]);
+  const [fpTc, setFpTc] = React.useState<number>();
+  const [fpAmount, setFpAmount] = React.useState<number>(0);
+  const [fpDesc, setFpDesc] = React.useState("");
+  const doFastPost = async () => {
+    if (!fpInvoices.length || !fpAmount) { message.warning("اختر فواتير ومبلغ"); return; }
+    try {
+      const r = await fastPost({ invoices: fpInvoices, transaction_code: fpTc, amount: fpAmount, description: fpDesc }).unwrap();
+      message.success(`${t("posted")}: ${r.posted}`); setFpOpen(false); setFpInvoices([]); setFpAmount(0);
+    } catch { message.error("خطأ"); }
+  };
+  // تقسيم بند
+  const [splitCh, setSplitCh] = React.useState<any>(null);
+  const [splitAmt, setSplitAmt] = React.useState<number>(0);
+  const doSplit = async () => {
+    try {
+      await invoiceAction({ id: current.id, action: "split_charge", body: { charge: splitCh.id, amount: splitAmt } }).unwrap();
+      message.success(t("saved")); setSplitCh(null); setSplitAmt(0);
+    } catch (e: any) { message.error(e?.data?.detail || "خطأ"); }
+  };
+  // بند حر
+  const [chTc, setChTc] = React.useState<number>();
+  const [chDesc, setChDesc] = React.useState("");
+  const [chAmt, setChAmt] = React.useState<number>(0);
+  const addCharge = async () => {
+    if (!chAmt) return;
+    try {
+      await invoiceAction({ id: current.id, action: "add_charge", body: { transaction_code: chTc, description: chDesc, amount: chAmt } }).unwrap();
+      message.success(t("saved")); setChTc(undefined); setChDesc(""); setChAmt(0);
+    } catch { message.error("خطأ"); }
+  };
   const [svcId, setSvcId] = React.useState<number | undefined>();
   const [couponCode, setCouponCode] = React.useState("");
   const [sel, setSel] = React.useState<any>(null);
@@ -61,8 +110,14 @@ export default function Invoices() {
     } catch { message.error("خطأ"); }
   };
 
+  const tcOptions = (tcodes?.results || []).map((c: any) => ({ value: c.id, label: `${c.code} - ${c.name_ar}`, price: c.default_price }));
+
   return (
-    <Card title={t("invoices")}>
+    <Card title={t("invoices")} extra={
+      <Space>
+        <Button icon={<ThunderboltOutlined />} onClick={() => setFpOpen(true)}>{t("fastPost")}</Button>
+        <Button type="primary" icon={<UserAddOutlined />} onClick={() => setPbOpen(true)}>{t("passerBy")}</Button>
+      </Space>}>
       <Table rowKey="id" loading={isFetching} dataSource={data?.results || []} scroll={{ x: true }}
         onRow={(r) => ({ onClick: () => setSel(r), style: { cursor: "pointer" } })}
         columns={[
@@ -128,10 +183,22 @@ export default function Invoices() {
                         } catch { message.error("خطأ"); }
                       }} />
                   ) },
-                { title: "", width: 44, render: (_: any, r: any) => Number(r.total) > 0 ? (
-                  <Button size="small" type="text" onClick={() => { setAdj(r); setAdjValue(0); setAdjReason(""); }}>✎</Button>
+                { title: "", width: 76, render: (_: any, r: any) => Number(r.total) > 0 ? (
+                  <Space size={2}>
+                    <Button size="small" type="text" title={t("adjust")} onClick={() => { setAdj(r); setAdjValue(0); setAdjReason(""); }}>✎</Button>
+                    <Button size="small" type="text" title={t("split")} onClick={() => { setSplitCh(r); setSplitAmt(0); }}>✂</Button>
+                  </Space>
                 ) : null },
               ]} />
+            {/* ترحيل بند حر */}
+            <Space wrap style={{ marginTop: 8 }}>
+              <Select allowClear showSearch optionFilterProp="label" placeholder="كود بند" style={{ width: 150 }}
+                value={chTc} onChange={(v) => { setChTc(v); const o = tcOptions.find((x: any) => x.value === v); if (o?.price) setChAmt(Number(o.price)); }}
+                options={tcOptions} />
+              <Input placeholder="وصف" value={chDesc} onChange={(e) => setChDesc(e.target.value)} style={{ width: 120 }} />
+              <InputNumber placeholder="مبلغ" value={chAmt} onChange={(v) => setChAmt(v || 0)} style={{ width: 90 }} />
+              <Button onClick={addCharge} disabled={!chAmt}>{t("postCharge")}</Button>
+            </Space>
             <Descriptions size="small" column={1} style={{ marginTop: 12 }}>
               <Descriptions.Item label={t("vat")}>{current.vat_amount} ر.س</Descriptions.Item>
               <Descriptions.Item label={t("total")}><b>{current.total} ر.س</b></Descriptions.Item>
@@ -210,6 +277,39 @@ export default function Invoices() {
           </Space>
           <Input.TextArea rows={2} value={adjReason} onChange={(e) => setAdjReason(e.target.value)}
             placeholder={t("adjustReason")} />
+        </Space>
+      </Modal>
+
+      {/* تقسيم بند */}
+      <Modal open={!!splitCh} title={`${t("split")} — ${splitCh?.description}`} onCancel={() => setSplitCh(null)} onOk={doSplit} okText={t("split")} destroyOnHidden>
+        <p style={{ color: "#8c8c8c" }}>البند: <b>{splitCh?.total} ر.س</b> — يُفصل مبلغ لبند مستقل (يمكن تحويله لغرفة/نافذة أخرى)</p>
+        <InputNumber value={splitAmt} onChange={(v) => setSplitAmt(v || 0)} min={0} max={Number(splitCh?.total) - 0.01}
+          style={{ width: "100%" }} addonAfter="ر.س" placeholder="المبلغ المُقسّم" autoFocus />
+      </Modal>
+
+      {/* فوليو عابر */}
+      <Modal open={pbOpen} title={t("passerBy")} onCancel={() => setPbOpen(false)} onOk={createPasserBy} okText={t("create")} destroyOnHidden>
+        <p style={{ color: "#8c8c8c" }}>فاتورة مستقلة لعميل غير نزيل (مطعم/خدمة) — بدون حجز</p>
+        <Form form={pbForm} layout="vertical">
+          <Form.Item name="hotel" label="الفندق" rules={[{ required: true }]}>
+            <Select placeholder="اختر الفندق" options={(hotels?.results || []).map((h: any) => ({ value: h.id, label: h.name_ar }))} />
+          </Form.Item>
+          <Form.Item name="name" label="اسم العميل" initialValue="عميل عابر"><Input /></Form.Item>
+          <Form.Item name="phone" label="الجوال"><Input /></Form.Item>
+        </Form>
+      </Modal>
+
+      {/* ترحيل سريع */}
+      <Modal open={fpOpen} title={t("fastPost")} onCancel={() => setFpOpen(false)} onOk={doFastPost} okText={t("postCharge")} width={560} destroyOnHidden>
+        <p style={{ color: "#8c8c8c" }}>ترحيل نفس البند على عدة فواتير دفعة واحدة</p>
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Select mode="multiple" placeholder="اختر الفواتير" style={{ width: "100%" }} value={fpInvoices} onChange={setFpInvoices}
+            options={(data?.results || []).filter((i: any) => i.status !== "void").map((i: any) => ({ value: i.id, label: `${i.number} - ${i.guest_name}` }))} />
+          <Select allowClear showSearch optionFilterProp="label" placeholder="كود بند" style={{ width: "100%" }}
+            value={fpTc} onChange={(v) => { setFpTc(v); const o = tcOptions.find((x: any) => x.value === v); if (o) { setFpDesc(o.label.split(" - ")[1] || ""); if (o.price) setFpAmount(Number(o.price)); } }}
+            options={tcOptions} />
+          <Input placeholder="الوصف" value={fpDesc} onChange={(e) => setFpDesc(e.target.value)} />
+          <InputNumber placeholder="المبلغ" value={fpAmount} onChange={(v) => setFpAmount(v || 0)} style={{ width: "100%" }} addonAfter="ر.س" />
         </Space>
       </Modal>
     </Card>

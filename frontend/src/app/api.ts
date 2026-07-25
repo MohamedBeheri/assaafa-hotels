@@ -101,6 +101,14 @@ export const api = createApi({
       quote: b.query<any, Record<string, any>>({
         query: (params) => ({ url: "reservations-quote/", params }),
       }),
+      invoicePasserBy: b.mutation<any, any>({
+        query: (body) => ({ url: "invoices/passer_by/", method: "POST", body }),
+        invalidatesTags: ["Invoice"],
+      }),
+      invoiceFastPost: b.mutation<any, any>({
+        query: (body) => ({ url: "invoices/fast_post/", method: "POST", body }),
+        invalidatesTags: ["Invoice"],
+      }),
       invoiceAction: b.mutation<any, { id: number; action: string; body?: any }>({
         query: ({ id, action, body }) => ({ url: `invoices/${id}/${action}/`, method: "POST", body: body || {} }),
         invalidatesTags: ["Invoice", "Dashboard"],

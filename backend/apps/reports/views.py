@@ -251,6 +251,8 @@ def front_office(request):
             "status": r.status, "status_display": r.get_status_display(),
             "source": r.source, "source_display": r.get_source_display(),
             "balance": balance,
+            "alerts": [{"kind": a.get_kind_display(), "message": a.message}
+                       for a in r.alerts.filter(is_resolved=False)],
         }
 
     arrivals = res.filter(check_in=today).exclude(

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Reservation, ReservationRoom, Deposit, GroupBlock, BlockRoom, FixedCharge
+from .models import Reservation, ReservationRoom, Deposit, GroupBlock, BlockRoom, FixedCharge, ReservationAlert
 from apps.guests.serializers import GuestSerializer
 
 
@@ -27,6 +27,7 @@ class ReservationSerializer(serializers.ModelSerializer):
     deposits = serializers.SerializerMethodField()
     deposit_total = serializers.SerializerMethodField()
     fixed_charges = serializers.SerializerMethodField()
+    alerts = serializers.SerializerMethodField()
 
     class Meta:
         model = Reservation
@@ -45,6 +46,12 @@ class ReservationSerializer(serializers.ModelSerializer):
         return [{"id": f.id, "description": f.description, "amount": float(f.amount),
                  "frequency": f.frequency, "frequency_display": f.get_frequency_display(),
                  "is_active": f.is_active} for f in obj.fixed_charges.all()]
+
+    def get_alerts(self, obj):
+        return [{"id": a.id, "kind": a.kind, "kind_display": a.get_kind_display(),
+                 "message": a.message, "department": a.department,
+                 "show_on_checkin": a.show_on_checkin, "is_resolved": a.is_resolved}
+                for a in obj.alerts.filter(is_resolved=False)]
 
     def create(self, validated_data):
         rooms = validated_data.pop("rooms", [])

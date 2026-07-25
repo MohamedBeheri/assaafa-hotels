@@ -1,7 +1,7 @@
 import React from "react";
-import { Card, Tabs, Table, Button, Tag, Space, Badge, Empty, App as AntApp } from "antd";
+import { Card, Tabs, Table, Button, Tag, Space, Badge, Empty, App as AntApp, Modal, Input, Select, Tooltip } from "antd";
 import {
-  LoginOutlined, LogoutOutlined, CrownOutlined, HomeOutlined, ThunderboltOutlined, PrinterOutlined,
+  LoginOutlined, LogoutOutlined, CrownOutlined, HomeOutlined, ThunderboltOutlined, PrinterOutlined, BellOutlined, WarningOutlined,
 } from "@ant-design/icons";
 import { printRegCard } from "../components/printRegCard";
 import { useTranslation } from "react-i18next";
@@ -28,18 +28,47 @@ function RoomsCell(rooms: any[]) {
 
 export default function FrontOffice() {
   const { t } = useTranslation();
-  const { message } = AntApp.useApp();
+  const { message, modal } = AntApp.useApp();
   const { hotel } = useApp();
   const params = hotel ? { hotel } : undefined;
   const { data, isFetching } = apiHooks.useFrontOfficeQuery(params, { pollingInterval: 60000 });
   const [act] = apiHooks.useReservationActionMutation();
 
+  const [alertRes, setAlertRes] = React.useState<any>(null);
+  const [alertMsg, setAlertMsg] = React.useState("");
+  const [alertDept, setAlertDept] = React.useState("");
+  const addAlert = async () => {
+    if (!alertMsg.trim()) { message.warning("اكتب رسالة التنبيه"); return; }
+    try {
+      await act({ id: alertRes.id, action: "add_alert", body: { message: alertMsg, department: alertDept } }).unwrap();
+      message.success(t("saved")); setAlertRes(null); setAlertMsg(""); setAlertDept("");
+    } catch { message.error("خطأ"); }
+  };
+  const doCheckIn = (r: any) => {
+    if (r.alerts?.length) {
+      modal.confirm({
+        title: <span><WarningOutlined style={{ color: "#E67E22" }} /> {t("alerts")} — {r.guest}</span>,
+        content: <div>{r.alerts.map((a: any, i: number) => (
+          <div key={i} style={{ padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
+            <b>{a.kind}:</b> {a.message}</div>))}</div>,
+        okText: t("checkInAction"), cancelText: t("cancel"),
+        onOk: () => doAction(r.id, "check_in"),
+      });
+    } else { doAction(r.id, "check_in"); }
+  };
   const doAction = async (id: number, action: string) => {
     try { await act({ id, action }).unwrap(); message.success(t("saved")); }
     catch { message.error("خطأ"); }
   };
 
-  const guestsCol = { title: t("guest"), render: (_: any, r: any) => GuestCell(r) };
+  const guestsCol = { title: t("guest"), render: (_: any, r: any) => (
+    <span>{GuestCell(r)}
+      {r.alerts?.length > 0 && <Tag color="orange" icon={<WarningOutlined />} style={{ marginTop: 4 }}>{r.alerts.length} تنبيه</Tag>}
+    </span>
+  ) };
+  const alertBtn = (r: any) => (
+    <Tooltip title={t("addAlert")}><Button size="small" icon={<BellOutlined />} onClick={() => { setAlertRes(r); setAlertMsg(""); setAlertDept(""); }} /></Tooltip>
+  );
   const roomsCol = { title: t("rooms"), dataIndex: "rooms", render: RoomsCell };
   const stayCol = {
     title: `${t("checkIn")} → ${t("checkOut")}`, render: (_: any, r: any) => (
@@ -63,8 +92,9 @@ export default function FrontOffice() {
     { title: t("actions"), render: (_: any, r: any) => (
       <Space>
         <Button type="primary" size="small" icon={<LoginOutlined />}
-          onClick={() => doAction(r.id, "check_in")}>{t("checkInAction")}</Button>
+          onClick={() => doCheckIn(r)}>{t("checkInAction")}</Button>
         <Button size="small" icon={<PrinterOutlined />} onClick={() => printRegCard(r)}>{t("regCard")}</Button>
+        {alertBtn(r)}
       </Space>
     ) },
   ];
@@ -110,6 +140,15 @@ export default function FrontOffice() {
               ? <Table rowKey="id" childrenColumnName="_sr" loading={isFetching} dataSource={data.departures} columns={departuresCols} pagination={false} scroll={{ x: true }} />
               : <Empty description={t("departuresToday")} /> },
         ]} />
+
+      <Modal open={!!alertRes} title={`${t("addAlert")} — ${alertRes?.guest}`}
+        onCancel={() => setAlertRes(null)} onOk={addAlert} okText={t("addAlert")} destroyOnHidden>
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Input.TextArea rows={2} value={alertMsg} onChange={(e) => setAlertMsg(e.target.value)}
+            placeholder="مثال: تواصل مع مدير المكتب الأمامي عند الوصول" />
+          <Input value={alertDept} onChange={(e) => setAlertDept(e.target.value)} placeholder="القسم (اختياري)" />
+        </Space>
+      </Modal>
     </Card>
   );
 }

@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Reservation, ReservationRoom, Deposit, GroupBlock, FixedCharge
+from .models import Reservation, ReservationRoom, Deposit, GroupBlock, FixedCharge, ReservationAlert
 from .serializers import (ReservationSerializer, ReservationRoomSerializer,
                           GroupBlockSerializer)
 from apps.hotels.models import Room
@@ -80,6 +80,25 @@ class ReservationViewSet(viewsets.ModelViewSet):
         elif inv.paid_amount > 0:
             inv.status = Invoice.Status.PARTIAL
         inv.save()
+
+    @action(detail=True, methods=["post"])
+    def add_alert(self, request, pk=None):
+        """إضافة تنبيه/أثر على الحجز (يظهر عند تسجيل الدخول)."""
+        res = self.get_object()
+        user = request.user if request.user.is_authenticated else None
+        ReservationAlert.objects.create(
+            reservation=res, kind=request.data.get("kind", "alert"),
+            message=request.data.get("message", ""),
+            department=request.data.get("department", ""),
+            show_on_checkin=request.data.get("show_on_checkin", True),
+            created_by=user)
+        return Response(ReservationSerializer(res).data)
+
+    @action(detail=True, methods=["post"])
+    def resolve_alert(self, request, pk=None):
+        res = self.get_object()
+        res.alerts.filter(pk=request.data.get("alert")).update(is_resolved=True)
+        return Response(ReservationSerializer(res).data)
 
     @action(detail=True, methods=["post"])
     def add_fixed_charge(self, request, pk=None):

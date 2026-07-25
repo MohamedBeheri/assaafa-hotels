@@ -1,4 +1,12 @@
 export default {
+  passerBy: "فوليو عابر",
+  fastPost: "ترحيل سريع",
+  split: "تقسيم",
+  postCharge: "ترحيل",
+  posted: "تم الترحيل",
+  create: "إنشاء",
+  alerts: "تنبيهات",
+  addAlert: "إضافة تنبيه",
   transactionCodes: "أكواد البنود",
   regCard: "بطاقة تسجيل",
   adjust: "تسوية",

@@ -90,6 +90,85 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         return Response(InvoiceSerializer(inv).data)
 
     @action(detail=True, methods=["post"])
+    def add_charge(self, request, pk=None):
+        """ترحيل بند حر على الفوليو (يدوي/كود بند)."""
+        from decimal import Decimal
+        inv = self.get_object()
+        tc = TransactionCode.objects.filter(pk=request.data.get("transaction_code")).first()
+        try:
+            amount = Decimal(str(request.data.get("amount")))
+        except Exception:
+            return Response({"detail": "مبلغ غير صحيح"}, status=400)
+        Charge.objects.create(
+            invoice=inv, kind=Charge.Kind.OTHER, transaction_code=tc,
+            description=request.data.get("description") or (tc.name_ar if tc else "بند"),
+            quantity=int(request.data.get("quantity", 1)), unit_price=amount,
+            window=int(request.data.get("window", 1)))
+        return Response(InvoiceSerializer(inv).data)
+
+    @action(detail=True, methods=["post"])
+    def split_charge(self, request, pk=None):
+        """تقسيم بند: يفصل مبلغاً منه إلى بند جديد (يمكن تحويله لنافذة/غرفة أخرى)."""
+        from decimal import Decimal
+        inv = self.get_object()
+        try:
+            charge = inv.charges.get(pk=request.data.get("charge"))
+            amount = Decimal(str(request.data.get("amount")))
+        except (Charge.DoesNotExist, Exception):
+            return Response({"detail": "بيانات غير صحيحة"}, status=400)
+        original = charge.total
+        if amount <= 0 or amount >= original:
+            return Response({"detail": "مبلغ التقسيم يجب أن يكون أقل من قيمة البند"}, status=400)
+        charge.quantity = 1
+        charge.unit_price = original - amount
+        charge.save()
+        Charge.objects.create(
+            invoice=inv, kind=charge.kind, transaction_code=charge.transaction_code,
+            description=f"{charge.description} (مقسّم)", quantity=1, unit_price=amount,
+            window=charge.window)
+        return Response(InvoiceSerializer(inv).data)
+
+    @action(detail=False, methods=["post"])
+    def fast_post(self, request):
+        """ترحيل سريع: نفس البند على عدة فواتير دفعة واحدة."""
+        from decimal import Decimal
+        ids = request.data.get("invoices", [])
+        tc = TransactionCode.objects.filter(pk=request.data.get("transaction_code")).first()
+        try:
+            amount = Decimal(str(request.data.get("amount")))
+        except Exception:
+            return Response({"detail": "مبلغ غير صحيح"}, status=400)
+        desc = request.data.get("description") or (tc.name_ar if tc else "بند")
+        qty = int(request.data.get("quantity", 1))
+        posted = 0
+        for inv in Invoice.objects.filter(pk__in=ids):
+            Charge.objects.create(invoice=inv, kind=Charge.Kind.OTHER, transaction_code=tc,
+                                  description=desc, quantity=qty, unit_price=amount)
+            posted += 1
+        return Response({"posted": posted})
+
+    @action(detail=False, methods=["post"])
+    def passer_by(self, request):
+        """إنشاء فوليو لغير نزيل (Passer-By) — فاتورة مستقلة بدون حجز."""
+        from apps.guests.models import Guest
+        from apps.hotels.models import Hotel
+        try:
+            hotel = Hotel.objects.get(pk=request.data.get("hotel"))
+        except Hotel.DoesNotExist:
+            return Response({"detail": "فندق غير صحيح"}, status=400)
+        gid = request.data.get("guest")
+        if gid:
+            guest = Guest.objects.filter(pk=gid).first()
+        else:
+            name = (request.data.get("name") or "عميل عابر").strip()
+            phone = (request.data.get("phone") or "").strip()
+            guest = Guest.objects.create(first_name=name, phone=phone or "PASSER",
+                                         id_number=f"PB-{phone or 'x'}")
+        inv = Invoice.objects.create(hotel=hotel, guest=guest, reservation=None,
+                                     vat_rate=hotel.vat_rate)
+        return Response(InvoiceSerializer(inv).data, status=201)
+
+    @action(detail=True, methods=["post"])
     def route_to_company(self, request, pk=None):
         """توجيه الفاتورة لحساب شركة/وكيل آجل (AR)."""
         from apps.guests.models import Company
