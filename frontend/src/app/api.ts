@@ -52,6 +52,17 @@ export const api = createApi({
         query: ({ id, action, body }) => ({ url: `reservations/${id}/${action}/`, method: "POST", body: body || {} }),
         invalidatesTags: ["Reservation", "Room", "Invoice", "Dashboard"],
       }),
+      companySettle: b.mutation<any, { id: number; amount: number; method: string }>({
+        query: ({ id, ...body }) => ({ url: `companies/${id}/settle/`, method: "POST", body }),
+        invalidatesTags: ["Invoice", "Guest"],
+      }),
+      companyStatement: b.query<any, number>({
+        query: (id) => `companies/${id}/statement/`,
+      }),
+      blockAction: b.mutation<any, { id: number; action: string; body?: any }>({
+        query: ({ id, action, body }) => ({ url: `group-blocks/${id}/${action}/`, method: "POST", body: body || {} }),
+        invalidatesTags: ["Reservation", "Room"],
+      }),
       accountsReceivable: b.query<any, void>({
         query: () => "accounts-receivable/",
         providesTags: ["Invoice"],
@@ -120,6 +131,7 @@ export const api = createApi({
       ...crud("Coupons", "coupons/", "Invoice"),
       ...crud("GuestDocuments", "guest-documents/", "Guest"),
       ...crud("Companies", "companies/", "Guest"),
+      ...crud("GroupBlocks", "group-blocks/", "Reservation"),
       ...crud("Users", "users/", "User"),
     };
   },

@@ -5,7 +5,7 @@ import {
   FileTextOutlined, ShoppingCartOutlined, DollarOutlined, UserOutlined,
   GlobalOutlined, LogoutOutlined, AppstoreOutlined, TableOutlined,
   ClearOutlined, TagsOutlined, BarChartOutlined, CoffeeOutlined, CompassOutlined,
-  ThunderboltOutlined, MoonOutlined, SearchOutlined, ShopOutlined, AccountBookOutlined,
+  ThunderboltOutlined, MoonOutlined, SearchOutlined, ShopOutlined, AccountBookOutlined, UsergroupAddOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -31,6 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { key: "/calendar", icon: <TableOutlined />, label: t("calendar") },
     { key: "/reservations", icon: <CalendarOutlined />, label: t("reservations") },
     { key: "/night-audit", icon: <MoonOutlined />, label: t("nightAudit") },
+    { key: "/group-blocks", icon: <UsergroupAddOutlined />, label: t("groupBlocks") },
     { key: "/rooms", icon: <HomeOutlined />, label: t("rooms") },
     { key: "/guests", icon: <TeamOutlined />, label: t("guests") },
     { key: "/invoices", icon: <FileTextOutlined />, label: t("invoices") },

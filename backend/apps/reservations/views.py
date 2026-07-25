@@ -2,8 +2,9 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Reservation, ReservationRoom
-from .serializers import ReservationSerializer, ReservationRoomSerializer
+from .models import Reservation, ReservationRoom, Deposit, GroupBlock
+from .serializers import (ReservationSerializer, ReservationRoomSerializer,
+                          GroupBlockSerializer)
 from apps.hotels.models import Room
 from apps.billing.models import Invoice, Charge
 
@@ -28,6 +29,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             rr.room.status = Room.Status.OCCUPIED
             rr.room.save()
         self._ensure_invoice(res)
+        self._apply_deposits(res)
         return Response(ReservationSerializer(res).data)
 
     @action(detail=True, methods=["post"])
@@ -40,6 +42,42 @@ class ReservationViewSet(viewsets.ModelViewSet):
             rr.room.status = Room.Status.CLEANING
             rr.room.save()
         return Response(ReservationSerializer(res).data)
+
+    @action(detail=True, methods=["post"])
+    def add_deposit(self, request, pk=None):
+        """تسجيل عربون على الحجز."""
+        res = self.get_object()
+        from decimal import Decimal
+        try:
+            amount = Decimal(str(request.data.get("amount")))
+        except Exception:
+            return Response({"detail": "مبلغ غير صحيح"}, status=400)
+        user = request.user if request.user.is_authenticated else None
+        Deposit.objects.create(
+            reservation=res, amount=amount,
+            method=request.data.get("method", "cash"),
+            reference=request.data.get("reference", ""), received_by=user)
+        # لو الفاتورة موجودة بالفعل، طبّق العربون فوراً كدفعة
+        if hasattr(res, "invoice"):
+            self._apply_deposits(res)
+        return Response(ReservationSerializer(res).data)
+
+    def _apply_deposits(self, res):
+        """يحوّل العرابين غير المطبّقة لدفعات على الفاتورة."""
+        from apps.billing.models import Payment, Invoice
+        if not hasattr(res, "invoice"):
+            return
+        inv = res.invoice
+        for dep in res.deposits.filter(applied=False, is_refunded=False):
+            Payment.objects.create(invoice=inv, amount=dep.amount, method=dep.method,
+                                   reference=f"عربون {dep.reference}".strip())
+            dep.applied = True
+            dep.save()
+        if inv.balance <= 0 and inv.paid_amount > 0:
+            inv.status = Invoice.Status.PAID
+        elif inv.paid_amount > 0:
+            inv.status = Invoice.Status.PARTIAL
+        inv.save()
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
@@ -104,3 +142,48 @@ def quote(request):
         "nightly": [{"date": (check_in + timedelta(days=i)).isoformat(), "price": float(p)}
                     for i, p in enumerate(prices)],
     })
+
+
+class GroupBlockViewSet(viewsets.ModelViewSet):
+    queryset = GroupBlock.objects.select_related("hotel", "company").prefetch_related("block_rooms").all()
+    serializer_class = GroupBlockSerializer
+    filterset_fields = ["hotel", "status", "company"]
+    search_fields = ["name"]
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(created_by=user)
+
+    @action(detail=True, methods=["post"])
+    def pickup(self, request, pk=None):
+        """سحب غرفة من البلوك: إنشاء حجز فردي لنزيل ضمن المجموعة."""
+        block = self.get_object()
+        from apps.guests.models import Guest
+        try:
+            guest = Guest.objects.get(pk=request.data.get("guest"))
+            block_room = block.block_rooms.get(pk=request.data.get("block_room"))
+        except (Guest.DoesNotExist, Exception):
+            return Response({"detail": "بيانات غير صحيحة"}, status=400)
+        # أول غرفة متاحة من النوع
+        from apps.hotels.models import Room
+        taken = ReservationRoom.objects.filter(
+            reservation__hotel=block.hotel,
+            reservation__status__in=[Reservation.Status.PENDING, Reservation.Status.CONFIRMED, Reservation.Status.CHECKED_IN],
+            reservation__check_in__lt=block.check_out,
+            reservation__check_out__gt=block.check_in,
+        ).values_list("room_id", flat=True)
+        room = (block_room.room_type.rooms.filter(is_active=True)
+                .exclude(status__in=[Room.Status.MAINTENANCE, Room.Status.BLOCKED])
+                .exclude(id__in=list(taken)).first())
+        if not room:
+            return Response({"detail": "لا توجد غرف متاحة من هذا النوع"}, status=409)
+        res = Reservation.objects.create(
+            hotel=block.hotel, guest=guest, company=block.company, block=block,
+            check_in=block.check_in, check_out=block.check_out,
+            status=Reservation.Status.CONFIRMED, source=Reservation.Source.WALK_IN)
+        ReservationRoom.objects.create(
+            reservation=res, room=room, room_type=block_room.room_type,
+            rate_per_night=block_room.rate_per_night)
+        room.status = Room.Status.RESERVED
+        room.save()
+        return Response(ReservationSerializer(res).data, status=201)

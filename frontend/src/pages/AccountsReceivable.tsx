@@ -1,12 +1,38 @@
-import { Card, Table, Tag, Row, Col, Statistic, Spin, Progress } from "antd";
-import { BankOutlined, WarningOutlined } from "@ant-design/icons";
+import React from "react";
+import {
+  Card, Table, Tag, Row, Col, Statistic, Spin, Progress, Button, Space,
+  Modal, InputNumber, Select, App as AntApp,
+} from "antd";
+import { BankOutlined, WarningOutlined, DollarOutlined, PrinterOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import { apiHooks } from "../app/api";
 import { BRAND } from "../theme";
+import { printStatement } from "../components/printStatement";
 
 export default function AccountsReceivable() {
   const { t } = useTranslation();
+  const { message } = AntApp.useApp();
   const { data, isLoading } = apiHooks.useAccountsReceivableQuery();
+  const [settle] = apiHooks.useCompanySettleMutation();
+  const [fetchStatement] = apiHooks.useLazyCompanyStatementQuery();
+  const [settleFor, setSettleFor] = React.useState<any>(null);
+  const [amount, setAmount] = React.useState<number>(0);
+  const [method, setMethod] = React.useState("transfer");
+
+  const doSettle = async () => {
+    try {
+      const r = await settle({ id: settleFor.id, amount, method }).unwrap();
+      message.success(`${t("settled")}: ${(amount - r.unallocated).toLocaleString()} ر.س`);
+      setSettleFor(null); setAmount(0);
+    } catch { message.error("خطأ"); }
+  };
+  const openStatement = async (c: any) => {
+    try {
+      const s = await fetchStatement(c.id).unwrap();
+      printStatement(s);
+    } catch { message.error("خطأ"); }
+  };
+
   if (isLoading || !data) return <Spin size="large" style={{ display: "block", marginTop: 80 }} />;
 
   const withBalance = data.companies.filter((c: any) => c.outstanding > 0);
@@ -65,10 +91,30 @@ export default function AccountsReceivable() {
                   )}
                 </div>
               ) },
-            { title: "", render: (_: any, c: any) => c.over_limit
-              ? <Tag color="red" icon={<WarningOutlined />}>{t("overLimit")}</Tag> : null },
+            { title: "", render: (_: any, c: any) => (
+              <Space>
+                {c.over_limit && <Tag color="red" icon={<WarningOutlined />}>{t("overLimit")}</Tag>}
+                <Button size="small" icon={<PrinterOutlined />} onClick={() => openStatement(c)}>{t("statement")}</Button>
+                {c.outstanding > 0 && (
+                  <Button size="small" type="primary" icon={<DollarOutlined />}
+                    onClick={() => { setSettleFor(c); setAmount(c.outstanding); }}>{t("settle")}</Button>
+                )}
+              </Space>
+            ) },
           ]} />
       </Card>
+
+      <Modal open={!!settleFor} title={`${t("settle")} — ${settleFor?.name}`}
+        onCancel={() => setSettleFor(null)} onOk={doSettle} okText={t("settle")}>
+        <p style={{ color: "#8c8c8c" }}>{t("balance")}: <b>{settleFor?.outstanding?.toLocaleString()} ر.س</b></p>
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <InputNumber value={amount} onChange={(v) => setAmount(v || 0)} style={{ width: "100%" }}
+            min={0} max={settleFor?.outstanding} addonAfter="ر.س" />
+          <Select value={method} onChange={setMethod} style={{ width: "100%" }}
+            options={[{ value: "transfer", label: "تحويل بنكي" }, { value: "cash", label: "نقدي" },
+              { value: "card", label: "بطاقة" }]} />
+        </Space>
+      </Modal>
     </div>
   );
 }

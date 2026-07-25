@@ -23,6 +23,7 @@ import FrontOffice from "./pages/FrontOffice";
 import NightAudit from "./pages/NightAudit";
 import Companies from "./pages/Companies";
 import AccountsReceivable from "./pages/AccountsReceivable";
+import GroupBlocks from "./pages/GroupBlocks";
 import PublicSite from "./site/PublicSite";
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="/front-office" element={<FrontOffice />} />
               <Route path="/reservations" element={<Reservations />} />
               <Route path="/night-audit" element={<NightAudit />} />
+              <Route path="/group-blocks" element={<GroupBlocks />} />
               <Route path="/housekeeping" element={<Housekeeping />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/reports" element={<Reports />} />

@@ -3,7 +3,7 @@ import {
   Card, Table, Button, Tag, Space, Modal, Form, Select, DatePicker,
   InputNumber, App as AntApp,
 } from "antd";
-import { PlusOutlined, LoginOutlined, LogoutOutlined, CloseOutlined, GlobalOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { PlusOutlined, LoginOutlined, LogoutOutlined, CloseOutlined, GlobalOutlined, CheckCircleOutlined, WalletOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { apiHooks } from "../app/api";
@@ -29,6 +29,15 @@ export default function Reservations() {
   const confirmRes = async (id: number) => {
     try { await update({ id, status: "confirmed" }).unwrap(); message.success(t("saved")); }
     catch { message.error("خطأ"); }
+  };
+  const [depRes, setDepRes] = React.useState<any>(null);
+  const [depAmount, setDepAmount] = React.useState<number>(0);
+  const [depMethod, setDepMethod] = React.useState("cash");
+  const addDeposit = async () => {
+    try {
+      await act({ id: depRes.id, action: "add_deposit", body: { amount: depAmount, method: depMethod } }).unwrap();
+      message.success(t("depositAdded")); setDepRes(null); setDepAmount(0);
+    } catch { message.error("خطأ"); }
   };
   const [open, setOpen] = React.useState(false);
   const [form] = Form.useForm();
@@ -100,6 +109,9 @@ export default function Reservations() {
               {r.status === "checked_in" &&
                 <Button size="small" icon={<LogoutOutlined />}
                   onClick={() => doAction(r.id, "check_out")}>{t("checkOutAction")}</Button>}
+              {["confirmed", "pending"].includes(r.status) &&
+                <Button size="small" icon={<WalletOutlined />} style={{ borderColor: "#8CC152", color: "#6FA23C" }}
+                  onClick={() => { setDepRes(r); setDepAmount(0); }}>{t("deposit")}</Button>}
               {!["cancelled", "checked_out"].includes(r.status) &&
                 <Button size="small" danger icon={<CloseOutlined />} onClick={() => doAction(r.id, "cancel")} />}
             </Space>
@@ -133,6 +145,18 @@ export default function Reservations() {
           </Form.Item>
           <Form.Item name="adults" label="عدد البالغين" initialValue={1}><InputNumber min={1} style={{ width: "100%" }} /></Form.Item>
         </Form>
+      </Modal>
+
+      <Modal open={!!depRes} title={`${t("deposit")} — ${depRes?.code}`}
+        onCancel={() => setDepRes(null)} onOk={addDeposit} okText={t("deposit")} destroyOnHidden>
+        <p style={{ color: "#8c8c8c" }}>{t("depositHint")}</p>
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <InputNumber value={depAmount} onChange={(v) => setDepAmount(v || 0)} style={{ width: "100%" }}
+            min={0} addonAfter="ر.س" placeholder={t("amount")} autoFocus />
+          <Select value={depMethod} onChange={setDepMethod} style={{ width: "100%" }}
+            options={[{ value: "cash", label: "نقدي" }, { value: "card", label: "بطاقة" },
+              { value: "transfer", label: "تحويل" }, { value: "online", label: "إلكتروني" }]} />
+        </Space>
       </Modal>
     </Card>
   );
