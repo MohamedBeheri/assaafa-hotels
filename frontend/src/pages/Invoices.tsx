@@ -18,6 +18,7 @@ export default function Invoices() {
   const [addPayment] = apiHooks.useCreatePaymentsMutation();
   const [invoiceAction] = apiHooks.useInvoiceActionMutation();
   const { data: services } = apiHooks.useGetServicesQuery();
+  const { data: companies } = apiHooks.useGetCompaniesQuery();
   const [svcId, setSvcId] = React.useState<number | undefined>();
   const [couponCode, setCouponCode] = React.useState("");
   const [sel, setSel] = React.useState<any>(null);
@@ -59,13 +60,45 @@ export default function Invoices() {
               <Col span={8}><Statistic title={t("balance")} value={current.balance} suffix="ر.س"
                 valueStyle={{ color: current.balance > 0 ? "#C0392B" : "#6FA23C" }} /></Col>
             </Row>
-            <Divider>البنود</Divider>
+            {/* توجيه لحساب شركة/وكيل (AR) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#FBF9F3", borderRadius: 10, padding: "10px 14px", marginBottom: 12 }}>
+              <span style={{ fontWeight: 700, fontSize: 13 }}>🏢 {t("billTo")}:</span>
+              <Select allowClear placeholder={t("guestPays")} style={{ flex: 1 }}
+                value={current.bill_to_company || undefined}
+                options={(companies?.results || []).map((c: any) => ({ value: c.id, label: `${c.name} (${c.kind_display})` }))}
+                onChange={async (v) => {
+                  try {
+                    await invoiceAction({ id: current.id, action: "route_to_company", body: { company: v ?? null } }).unwrap();
+                    message.success(t("saved"));
+                  } catch { message.error("خطأ"); }
+                }} />
+              {current.company_name && <Tag color="gold">{t("onCompanyAccount")}</Tag>}
+            </div>
+
+            <Divider>{t("folioItems")}</Divider>
+            {current.windows?.length > 1 && (
+              <Space wrap style={{ marginBottom: 10 }}>
+                {current.windows.map((w: any) => (
+                  <Tag key={w.window} color={w.window === 1 ? "green" : "gold"}>
+                    {t("window")} {w.window}: {w.total.toLocaleString()} ر.س ({w.count})
+                  </Tag>
+                ))}
+              </Space>
+            )}
             <Table size="small" rowKey="id" pagination={false} dataSource={current.charges}
               columns={[
                 { title: "الوصف", dataIndex: "description" },
-                { title: "كمية", dataIndex: "quantity" },
-                { title: t("price"), dataIndex: "unit_price" },
                 { title: t("total"), dataIndex: "total" },
+                { title: t("window"), dataIndex: "window", width: 90,
+                  render: (w: number, r: any) => (
+                    <Select size="small" value={w || 1} style={{ width: 62 }}
+                      options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
+                      onChange={async (v) => {
+                        try {
+                          await invoiceAction({ id: current.id, action: "transfer_charge", body: { charge: r.id, window: v } }).unwrap();
+                        } catch { message.error("خطأ"); }
+                      }} />
+                  ) },
               ]} />
             <Descriptions size="small" column={1} style={{ marginTop: 12 }}>
               <Descriptions.Item label={t("vat")}>{current.vat_amount} ر.س</Descriptions.Item>

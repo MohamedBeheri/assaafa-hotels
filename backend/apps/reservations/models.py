@@ -22,6 +22,8 @@ class Reservation(models.Model):
     hotel = models.ForeignKey("hotels.Hotel", on_delete=models.PROTECT, related_name="reservations")
     code = models.CharField("رقم الحجز", max_length=20, unique=True, blank=True)
     guest = models.ForeignKey("guests.Guest", on_delete=models.PROTECT, related_name="reservations")
+    company = models.ForeignKey("guests.Company", on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="reservations", verbose_name="شركة/وكيل")
     status = models.CharField("الحالة", max_length=20, choices=Status.choices, default=Status.CONFIRMED)
     source = models.CharField("مصدر الحجز", max_length=20, choices=Source.choices, default=Source.WALK_IN)
     check_in = models.DateField("تاريخ الدخول")

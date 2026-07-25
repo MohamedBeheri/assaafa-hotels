@@ -107,4 +107,28 @@ class Command(BaseCommand):
                         paid_at=now - timedelta(days=(today - co).days))
             self.stdout.write("✓ تاريخ حجوزات 30 يوم")
 
+        # 6) شركات ووكلاء + حساب آجل تجريبي
+        from apps.guests.models import Company
+        if not Company.objects.exists():
+            aramco, _ = Company.objects.get_or_create(
+                name="شركة أرامكو", defaults={"kind": "company",
+                "tax_number": "300012345600003", "credit_limit": 50000,
+                "discount_pct": 15, "payment_terms_days": 30})
+            Company.objects.get_or_create(
+                name="وكالة المشاعر للسياحة", defaults={"kind": "travel_agent",
+                "commission_pct": 10, "credit_limit": 30000})
+            Company.objects.get_or_create(
+                name="مجموعة الحبيب", defaults={"kind": "company",
+                "credit_limit": 20000, "discount_pct": 10})
+            # وجّه فاتورة مقيم حالياً لحساب أرامكو (يظهر في AR)
+            inhouse = Reservation.objects.filter(
+                status=Reservation.Status.CHECKED_IN).first()
+            if inhouse and hasattr(inhouse, "invoice"):
+                inhouse.company = aramco
+                inhouse.save()
+                inv = inhouse.invoice
+                inv.bill_to_company = aramco
+                inv.save()
+            self.stdout.write("✓ شركات ووكلاء + حساب آجل")
+
         self.stdout.write(self.style.SUCCESS("تمت التعبئة الإضافية ✓"))

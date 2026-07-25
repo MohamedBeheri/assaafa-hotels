@@ -19,6 +19,7 @@ class ReservationSerializer(serializers.ModelSerializer):
     rooms = ReservationRoomSerializer(many=True, required=False)
     guest_detail = GuestSerializer(source="guest", read_only=True)
     hotel_name = serializers.CharField(source="hotel.name_ar", read_only=True)
+    company_name = serializers.CharField(source="company.name", read_only=True, default=None)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     source_display = serializers.CharField(source="get_source_display", read_only=True)
     nights = serializers.IntegerField(read_only=True)

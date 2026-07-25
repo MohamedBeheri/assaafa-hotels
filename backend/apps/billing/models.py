@@ -16,6 +16,8 @@ class Invoice(models.Model):
     reservation = models.OneToOneField("reservations.Reservation", on_delete=models.CASCADE,
                                        related_name="invoice", null=True, blank=True)
     guest = models.ForeignKey("guests.Guest", on_delete=models.PROTECT, related_name="invoices")
+    bill_to_company = models.ForeignKey("guests.Company", on_delete=models.SET_NULL, null=True, blank=True,
+                                        related_name="ar_invoices", verbose_name="على حساب شركة")
     status = models.CharField("الحالة", max_length=10, choices=Status.choices, default=Status.OPEN)
     vat_rate = models.DecimalField("الضريبة %", max_digits=5, decimal_places=2, default=15)
     discount = models.DecimalField("الخصم", max_digits=10, decimal_places=2, default=0)
@@ -68,6 +70,7 @@ class Charge(models.Model):
 
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="charges")
     kind = models.CharField("النوع", max_length=10, choices=Kind.choices, default=Kind.SERVICE)
+    window = models.PositiveSmallIntegerField("النافذة", default=1)
     description = models.CharField("الوصف", max_length=200)
     quantity = models.DecimalField("الكمية", max_digits=8, decimal_places=2, default=1)
     unit_price = models.DecimalField("سعر الوحدة", max_digits=10, decimal_places=2, default=0)

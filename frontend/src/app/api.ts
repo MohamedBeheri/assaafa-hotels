@@ -52,6 +52,25 @@ export const api = createApi({
         query: ({ id, action, body }) => ({ url: `reservations/${id}/${action}/`, method: "POST", body: body || {} }),
         invalidatesTags: ["Reservation", "Room", "Invoice", "Dashboard"],
       }),
+      accountsReceivable: b.query<any, void>({
+        query: () => "accounts-receivable/",
+        providesTags: ["Invoice"],
+      }),
+      frontOffice: b.query<any, Record<string, any> | void>({
+        query: (params) => ({ url: "reports/front-office/", params: params || {} }),
+        providesTags: ["Reservation", "Dashboard"],
+      }),
+      globalSearch: b.query<any, Record<string, any>>({
+        query: (params) => ({ url: "reports/search/", params }),
+      }),
+      nightAuditRun: b.mutation<any, { hotel?: number }>({
+        query: (body) => ({ url: "reports/night-audit/run/", method: "POST", body }),
+        invalidatesTags: ["Reservation", "Room", "Dashboard"],
+      }),
+      nightAuditHistory: b.query<any[], Record<string, any> | void>({
+        query: (params) => ({ url: "reports/night-audit/history/", params: params || {} }),
+        providesTags: ["Dashboard"],
+      }),
       calendarGrid: b.query<any, Record<string, any> | void>({
         query: (params) => ({ url: "reports/calendar/", params: params || {} }),
         providesTags: ["Reservation", "Room"],
@@ -100,6 +119,7 @@ export const api = createApi({
       ...crud("Maintenance", "maintenance/", "Room"),
       ...crud("Coupons", "coupons/", "Invoice"),
       ...crud("GuestDocuments", "guest-documents/", "Guest"),
+      ...crud("Companies", "companies/", "Guest"),
       ...crud("Users", "users/", "User"),
     };
   },

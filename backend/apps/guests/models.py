@@ -65,3 +65,39 @@ class GuestDocument(models.Model):
 
     def __str__(self):
         return f"{self.guest} - {self.get_kind_display()}"
+
+
+class Company(models.Model):
+    """ملف شركة أو وكيل سياحة — أسعار خاصة، حد ائتمان، عمولة، حساب آجل (AR)."""
+    class Kind(models.TextChoices):
+        COMPANY = "company", "شركة"
+        TRAVEL_AGENT = "travel_agent", "وكيل سياحة"
+
+    kind = models.CharField("النوع", max_length=15, choices=Kind.choices, default=Kind.COMPANY)
+    name = models.CharField("الاسم", max_length=150)
+    contact_person = models.CharField("مسؤول التواصل", max_length=120, blank=True)
+    phone = models.CharField("الهاتف", max_length=30, blank=True)
+    email = models.EmailField("البريد", blank=True)
+    address = models.CharField("العنوان", max_length=255, blank=True)
+    tax_number = models.CharField("الرقم الضريبي", max_length=40, blank=True)
+    credit_limit = models.DecimalField("حد الائتمان", max_digits=12, decimal_places=2, default=0)
+    discount_pct = models.DecimalField("خصم متفق %", max_digits=5, decimal_places=2, default=0)
+    commission_pct = models.DecimalField("عمولة الوكيل %", max_digits=5, decimal_places=2, default=0)
+    payment_terms_days = models.PositiveSmallIntegerField("مدة السداد (يوم)", default=30)
+    is_active = models.BooleanField("نشط", default=True)
+    notes = models.TextField("ملاحظات", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "شركة/وكيل"
+        verbose_name_plural = "الشركات ووكلاء السياحة"
+        ordering = ["name"]
+
+    @property
+    def outstanding(self):
+        """إجمالي المتبقي على الشركة (فواتير AR غير مسددة)."""
+        from decimal import Decimal
+        return sum((inv.balance for inv in self.ar_invoices.all()), Decimal("0"))
+
+    def __str__(self):
+        return f"{self.name} ({self.get_kind_display()})"

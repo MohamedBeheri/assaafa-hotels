@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Guest, GuestDocument
+from .models import Guest, GuestDocument, Company
 
 
 class GuestDocumentSerializer(serializers.ModelSerializer):
@@ -19,4 +19,14 @@ class GuestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Guest
+        fields = "__all__"
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    kind_display = serializers.CharField(source="get_kind_display", read_only=True)
+    outstanding = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    reservations_count = serializers.IntegerField(source="reservations.count", read_only=True)
+
+    class Meta:
+        model = Company
         fields = "__all__"

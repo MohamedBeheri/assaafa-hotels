@@ -19,6 +19,10 @@ import Housekeeping from "./pages/Housekeeping";
 import Pricing from "./pages/Pricing";
 import Reports from "./pages/Reports";
 import Menu from "./pages/Menu";
+import FrontOffice from "./pages/FrontOffice";
+import NightAudit from "./pages/NightAudit";
+import Companies from "./pages/Companies";
+import AccountsReceivable from "./pages/AccountsReceivable";
 import PublicSite from "./site/PublicSite";
 
 export default function App() {
@@ -42,13 +46,17 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/front-office" element={<FrontOffice />} />
               <Route path="/reservations" element={<Reservations />} />
+              <Route path="/night-audit" element={<NightAudit />} />
               <Route path="/housekeeping" element={<Housekeeping />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/rooms" element={<Rooms />} />
               <Route path="/guests" element={<Guests />} />
               <Route path="/invoices" element={<Invoices />} />
+              <Route path="/companies" element={<Companies />} />
+              <Route path="/accounts-receivable" element={<AccountsReceivable />} />
               <Route path="/pos" element={<POS />} />
               <Route path="/menu" element={<Menu />} />
               <Route path="/finance" element={<Finance />} />

@@ -218,3 +218,171 @@ def analytics(request):
         "top_guests": [{"name": f"{g['guest__first_name']} {g['guest__last_name']}".strip(),
                         "count": g["c"]} for g in top_guests],
     })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def front_office(request):
+    """شاشة الفرونت أوفيس — الوصول والمقيمون والمغادرات اليوم."""
+    hotel_id = request.query_params.get("hotel")
+    today = timezone.localdate()
+    res = Reservation.objects.select_related("guest").prefetch_related("rooms__room", "rooms__room_type")
+    if hotel_id:
+        res = res.filter(hotel_id=hotel_id)
+
+    def serialize(r):
+        try:
+            inv = r.invoice
+            balance = float(inv.balance)
+        except Exception:
+            balance = None
+        return {
+            "id": r.id, "code": r.code,
+            "guest": r.guest.full_name, "phone": r.guest.phone,
+            "nationality": r.guest.nationality, "is_vip": r.guest.is_vip,
+            "rooms": [{"number": rr.room.number, "type": rr.room_type.name_ar} for rr in r.rooms.all()],
+            "check_in": r.check_in.isoformat(), "check_out": r.check_out.isoformat(),
+            "nights": r.nights, "adults": r.adults, "children": r.children,
+            "status": r.status, "status_display": r.get_status_display(),
+            "source": r.source, "source_display": r.get_source_display(),
+            "balance": balance,
+        }
+
+    arrivals = res.filter(check_in=today).exclude(
+        status__in=[Reservation.Status.CANCELLED, Reservation.Status.CHECKED_OUT, Reservation.Status.NO_SHOW])
+    in_house = res.filter(status=Reservation.Status.CHECKED_IN)
+    departures = res.filter(check_out=today, status=Reservation.Status.CHECKED_IN)
+
+    return Response({
+        "date": today.isoformat(),
+        "arrivals": [serialize(r) for r in arrivals.order_by("-created_at")],
+        "in_house": [serialize(r) for r in in_house.order_by("check_out")],
+        "departures": [serialize(r) for r in departures.order_by("-created_at")],
+        "counts": {
+            "arrivals": arrivals.count(),
+            "in_house": in_house.count(),
+            "departures": departures.count(),
+        },
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def global_search(request):
+    """شريط الأوامر العالمي — بحث موحّد في النزلاء والحجوزات والغرف والفواتير."""
+    from apps.guests.models import Guest
+    from apps.billing.models import Invoice
+    q = (request.query_params.get("q") or "").strip()
+    hotel_id = request.query_params.get("hotel")
+    results = []
+    if not q:
+        return Response({"results": results})
+
+    guests = Guest.objects.filter(
+        Q(first_name__icontains=q) | Q(last_name__icontains=q) |
+        Q(phone__icontains=q) | Q(id_number__icontains=q))[:6]
+    for g in guests:
+        results.append({"type": "guest", "icon": "user",
+                        "label": g.full_name,
+                        "sublabel": f"{g.phone} · {g.nationality}",
+                        "route": "/guests"})
+
+    res = Reservation.objects.select_related("guest").filter(
+        Q(code__icontains=q) | Q(guest__first_name__icontains=q) |
+        Q(guest__last_name__icontains=q) | Q(guest__phone__icontains=q))
+    if hotel_id:
+        res = res.filter(hotel_id=hotel_id)
+    for r in res[:6]:
+        results.append({"type": "reservation", "icon": "calendar",
+                        "label": f"{r.code} — {r.guest.full_name}",
+                        "sublabel": f"{r.get_status_display()} · {r.check_in} → {r.check_out}",
+                        "route": "/reservations"})
+
+    rooms = Room.objects.select_related("room_type").filter(number__icontains=q)
+    if hotel_id:
+        rooms = rooms.filter(hotel_id=hotel_id)
+    for rm in rooms[:5]:
+        results.append({"type": "room", "icon": "home",
+                        "label": f"غرفة {rm.number}",
+                        "sublabel": f"{rm.room_type.name_ar} · {rm.get_status_display()}",
+                        "route": "/rooms"})
+
+    invs = Invoice.objects.select_related("guest").filter(number__icontains=q)
+    if hotel_id:
+        invs = invs.filter(hotel_id=hotel_id)
+    for inv in invs[:5]:
+        results.append({"type": "invoice", "icon": "file",
+                        "label": inv.number,
+                        "sublabel": f"{inv.guest.full_name} · {inv.get_status_display()}",
+                        "route": "/invoices"})
+
+    return Response({"results": results})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def night_audit_run(request):
+    """تشغيل التدقيق الليلي — رصد المتخلفين + لقطة إغلاق اليوم."""
+    from apps.billing.models import Payment
+    from .models import NightAudit
+    from .serializers import NightAuditSerializer
+    hotel_id = request.data.get("hotel")
+    today = timezone.localdate()
+
+    reservations = Reservation.objects.all()
+    rooms = Room.objects.filter(is_active=True)
+    payments = Payment.objects.filter(paid_at__date=today)
+    if hotel_id:
+        reservations = reservations.filter(hotel_id=hotel_id)
+        rooms = rooms.filter(hotel_id=hotel_id)
+        payments = payments.filter(invoice__hotel_id=hotel_id)
+
+    # 1) رصد من لم يحضر: حجوزات مؤكدة/معلقة مضى موعد وصولها ولم تُسجّل دخول
+    no_show_qs = reservations.filter(
+        check_in__lt=today,
+        status__in=[Reservation.Status.CONFIRMED, Reservation.Status.PENDING])
+    no_shows = no_show_qs.count()
+    for r in no_show_qs:
+        r.status = Reservation.Status.NO_SHOW
+        r.save()
+        for rr in r.rooms.all():
+            if rr.room.status in (Room.Status.RESERVED,):
+                rr.room.status = Room.Status.AVAILABLE
+                rr.room.save()
+
+    # 2) لقطة اليوم
+    total_rooms = rooms.count() or 1
+    rooms_sold = sum(r.rooms.count() for r in reservations.filter(
+        status=Reservation.Status.CHECKED_IN, check_in__lte=today, check_out__gt=today))
+    occupancy = round(rooms_sold / total_rooms * 100, 1)
+    revenue = float(payments.aggregate(s=Sum("amount"))["s"] or 0)
+    from apps.billing.models import Charge
+    room_charges = Charge.objects.filter(kind=Charge.Kind.ROOM, created_at__date=today)
+    if hotel_id:
+        room_charges = room_charges.filter(invoice__hotel_id=hotel_id)
+    room_rev = float(sum((c.total for c in room_charges), Decimal("0")))
+    adr = round(room_rev / rooms_sold, 2) if rooms_sold else 0
+    revpar = round(room_rev / total_rooms, 2)
+    arrivals = reservations.filter(check_in=today).exclude(
+        status__in=[Reservation.Status.CANCELLED, Reservation.Status.NO_SHOW]).count()
+    departures = reservations.filter(check_out=today, status=Reservation.Status.CHECKED_OUT).count()
+
+    audit = NightAudit.objects.create(
+        hotel_id=hotel_id or None, business_date=today,
+        total_rooms=rooms.count(), rooms_sold=rooms_sold, occupancy=occupancy,
+        adr=adr, revpar=revpar, revenue=revenue, arrivals=arrivals,
+        departures=departures, no_shows=no_shows,
+        run_by=request.user if request.user.is_authenticated else None)
+    return Response(NightAuditSerializer(audit).data, status=201)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def night_audit_history(request):
+    from .models import NightAudit
+    from .serializers import NightAuditSerializer
+    qs = NightAudit.objects.all()
+    hotel_id = request.query_params.get("hotel")
+    if hotel_id:
+        qs = qs.filter(hotel_id=hotel_id)
+    return Response(NightAuditSerializer(qs[:30], many=True).data)

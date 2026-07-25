@@ -22,6 +22,7 @@ export default function Reservations() {
   const { data, isFetching } = apiHooks.useGetReservationsQuery(params);
   const { data: hotels } = apiHooks.useGetHotelsQuery();
   const { data: guests } = apiHooks.useGetGuestsQuery();
+  const { data: companies } = apiHooks.useGetCompaniesQuery();
   const [create] = apiHooks.useCreateReservationsMutation();
   const [update] = apiHooks.useUpdateReservationsMutation();
   const [act] = apiHooks.useReservationActionMutation();
@@ -56,7 +57,7 @@ export default function Reservations() {
     const v = await form.validateFields();
     const room = (rooms?.results || []).find((r: any) => r.id === v.room);
     const body = {
-      hotel: v.hotel, guest: v.guest, adults: v.adults || 1,
+      hotel: v.hotel, guest: v.guest, company: v.company ?? null, adults: v.adults || 1,
       check_in: v.dates[0].format("YYYY-MM-DD"),
       check_out: v.dates[1].format("YYYY-MM-DD"),
       status: "confirmed",
@@ -113,6 +114,10 @@ export default function Reservations() {
           <Form.Item name="guest" label={t("guest")} rules={[{ required: true }]}>
             <Select showSearch optionFilterProp="label"
               options={(guests?.results || []).map((g: any) => ({ value: g.id, label: `${g.full_name} - ${g.phone}` }))} />
+          </Form.Item>
+          <Form.Item name="company" label={`${t("company")} (اختياري — للحساب الآجل)`}>
+            <Select allowClear showSearch optionFilterProp="label"
+              options={(companies?.results || []).map((c: any) => ({ value: c.id, label: `${c.name} (${c.kind_display})` }))} />
           </Form.Item>
           <Form.Item name="dates" label={`${t("checkIn")} / ${t("checkOut")}`} rules={[{ required: true }]}
             initialValue={[dayjs(), dayjs().add(1, "day")]}>

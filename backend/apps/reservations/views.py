@@ -57,7 +57,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             return res.invoice
         inv = Invoice.objects.create(
             hotel=res.hotel, reservation=res, guest=res.guest,
-            vat_rate=res.hotel.vat_rate)
+            vat_rate=res.hotel.vat_rate, bill_to_company=res.company)
         for rr in res.rooms.all():
             Charge.objects.create(
                 invoice=inv, kind=Charge.Kind.ROOM,

@@ -1,6 +1,6 @@
 from rest_framework import viewsets
-from .models import Guest, GuestDocument
-from .serializers import GuestSerializer, GuestDocumentSerializer
+from .models import Guest, GuestDocument, Company
+from .serializers import GuestSerializer, GuestDocumentSerializer, CompanySerializer
 
 
 class GuestViewSet(viewsets.ModelViewSet):
@@ -18,3 +18,10 @@ class GuestDocumentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
         serializer.save(uploaded_by=user)
+
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    filterset_fields = ["kind", "is_active"]
+    search_fields = ["name", "tax_number", "phone", "email"]
