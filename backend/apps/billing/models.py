@@ -71,6 +71,9 @@ class Charge(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="charges")
     kind = models.CharField("النوع", max_length=10, choices=Kind.choices, default=Kind.SERVICE)
     window = models.PositiveSmallIntegerField("النافذة", default=1)
+    transaction_code = models.ForeignKey("billing.TransactionCode", on_delete=models.SET_NULL,
+                                         null=True, blank=True, related_name="charges", verbose_name="كود البند")
+    reason = models.CharField("سبب التسوية", max_length=200, blank=True)
     description = models.CharField("الوصف", max_length=200)
     quantity = models.DecimalField("الكمية", max_digits=8, decimal_places=2, default=1)
     unit_price = models.DecimalField("سعر الوحدة", max_digits=10, decimal_places=2, default=0)
@@ -158,3 +161,30 @@ class Coupon(models.Model):
 
     def __str__(self):
         return self.code
+
+
+class TransactionCode(models.Model):
+    """كود بند مالي مرقّم — لتقارير محاسبية دقيقة (نمط OPERA / ZATCA)."""
+    class Category(models.TextChoices):
+        ROOM = "room", "إقامة"
+        FNB = "fnb", "مأكولات ومشروبات"
+        SERVICE = "service", "خدمات"
+        TAX = "tax", "ضرائب"
+        OTHER = "other", "أخرى"
+
+    hotel = models.ForeignKey("hotels.Hotel", on_delete=models.CASCADE, null=True, blank=True,
+                              related_name="transaction_codes", help_text="فارغ = كل الفنادق")
+    code = models.CharField("الكود", max_length=10, unique=True)
+    name_ar = models.CharField("الاسم", max_length=100)
+    name_en = models.CharField("الاسم (EN)", max_length=100, blank=True)
+    category = models.CharField("التصنيف", max_length=10, choices=Category.choices, default=Category.OTHER)
+    default_price = models.DecimalField("السعر الافتراضي", max_digits=10, decimal_places=2, default=0)
+    is_active = models.BooleanField("نشط", default=True)
+
+    class Meta:
+        verbose_name = "كود بند"
+        verbose_name_plural = "أكواد البنود"
+        ordering = ["code"]
+
+    def __str__(self):
+        return f"{self.code} - {self.name_ar}"

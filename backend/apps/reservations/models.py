@@ -178,3 +178,27 @@ class BlockRoom(models.Model):
 
     def __str__(self):
         return f"{self.room_type.name_ar} × {self.quantity}"
+
+
+class FixedCharge(models.Model):
+    """رسم ثابت متكرر يُرحّل تلقائياً على فاتورة الحجز (نمط OPERA Fixed Charges)."""
+    class Frequency(models.TextChoices):
+        DAILY = "daily", "يومي"
+        WEEKLY = "weekly", "أسبوعي"
+        ONCE = "once", "مرة واحدة"
+
+    reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name="fixed_charges")
+    description = models.CharField("الوصف", max_length=150)
+    transaction_code = models.ForeignKey("billing.TransactionCode", on_delete=models.SET_NULL,
+                                         null=True, blank=True)
+    amount = models.DecimalField("المبلغ", max_digits=10, decimal_places=2)
+    frequency = models.CharField("التكرار", max_length=10, choices=Frequency.choices, default=Frequency.DAILY)
+    is_active = models.BooleanField("نشط", default=True)
+    last_posted = models.DateField("آخر ترحيل", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "رسم ثابت"
+        verbose_name_plural = "الرسوم الثابتة"
+
+    def __str__(self):
+        return f"{self.description} ({self.get_frequency_display()})"

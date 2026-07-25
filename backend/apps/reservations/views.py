@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Reservation, ReservationRoom, Deposit, GroupBlock
+from .models import Reservation, ReservationRoom, Deposit, GroupBlock, FixedCharge
 from .serializers import (ReservationSerializer, ReservationRoomSerializer,
                           GroupBlockSerializer)
 from apps.hotels.models import Room
@@ -30,6 +30,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             rr.room.save()
         self._ensure_invoice(res)
         self._apply_deposits(res)
+        self._post_fixed_charges(res)
         return Response(ReservationSerializer(res).data)
 
     @action(detail=True, methods=["post"])
@@ -79,6 +80,44 @@ class ReservationViewSet(viewsets.ModelViewSet):
         elif inv.paid_amount > 0:
             inv.status = Invoice.Status.PARTIAL
         inv.save()
+
+    @action(detail=True, methods=["post"])
+    def add_fixed_charge(self, request, pk=None):
+        """إضافة رسم ثابت متكرر للحجز."""
+        from decimal import Decimal
+        res = self.get_object()
+        try:
+            amount = Decimal(str(request.data.get("amount")))
+        except Exception:
+            return Response({"detail": "مبلغ غير صحيح"}, status=400)
+        FixedCharge.objects.create(
+            reservation=res, description=request.data.get("description", "رسم ثابت"),
+            amount=amount, frequency=request.data.get("frequency", "daily"),
+            transaction_code_id=request.data.get("transaction_code") or None)
+        return Response(ReservationSerializer(res).data)
+
+    def _post_fixed_charges(self, res, on_date=None):
+        """يرحّل الرسوم الثابتة المستحقة على فاتورة الحجز."""
+        from apps.billing.models import Charge
+        from django.utils import timezone as _tz
+        d = on_date or _tz.localdate()
+        if not hasattr(res, "invoice"):
+            return
+        inv = res.invoice
+        for fc in res.fixed_charges.filter(is_active=True):
+            due = False
+            if fc.frequency == "daily":
+                due = fc.last_posted != d
+            elif fc.frequency == "weekly":
+                due = fc.last_posted is None or (d - fc.last_posted).days >= 7
+            elif fc.frequency == "once":
+                due = fc.last_posted is None
+            if due:
+                Charge.objects.create(
+                    invoice=inv, kind=Charge.Kind.SERVICE, description=fc.description,
+                    transaction_code=fc.transaction_code, quantity=1, unit_price=fc.amount)
+                fc.last_posted = d
+                fc.save()
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):

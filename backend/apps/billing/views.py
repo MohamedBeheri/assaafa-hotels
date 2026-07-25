@@ -1,8 +1,9 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Invoice, Charge, Payment, Coupon
-from .serializers import InvoiceSerializer, ChargeSerializer, PaymentSerializer, CouponSerializer
+from .models import Invoice, Charge, Payment, Coupon, TransactionCode
+from .serializers import (InvoiceSerializer, ChargeSerializer, PaymentSerializer,
+                          CouponSerializer, TransactionCodeSerializer)
 from apps.hotels.models import Service
 
 
@@ -57,6 +58,35 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         window = int(request.data.get("window", 1))
         charge.window = max(1, min(window, 4))
         charge.save()
+        return Response(InvoiceSerializer(inv).data)
+
+    @action(detail=True, methods=["post"])
+    def adjust_charge(self, request, pk=None):
+        """تسوية بند بخصم/تصحيح — تُرحّل بند سالب بسبب إلزامي (لا حذف)."""
+        from decimal import Decimal
+        inv = self.get_object()
+        try:
+            charge = inv.charges.get(pk=request.data.get("charge"))
+        except Charge.DoesNotExist:
+            return Response({"detail": "بند غير موجود"}, status=400)
+        reason = (request.data.get("reason") or "").strip()
+        if not reason:
+            return Response({"detail": "سبب التسوية إلزامي"}, status=400)
+        mode = request.data.get("mode", "amount")  # amount | percent
+        try:
+            value = Decimal(str(request.data.get("value")))
+        except Exception:
+            return Response({"detail": "قيمة غير صحيحة"}, status=400)
+        if mode == "percent":
+            adj = (charge.total * value / Decimal("100")).quantize(Decimal("0.01"))
+        else:
+            adj = value
+        # بند سالب مقابل (تصحيح) في نفس النافذة
+        Charge.objects.create(
+            invoice=inv, kind=Charge.Kind.OTHER, window=charge.window,
+            transaction_code=charge.transaction_code,
+            description=f"تسوية: {charge.description}", reason=reason,
+            quantity=1, unit_price=-abs(adj))
         return Response(InvoiceSerializer(inv).data)
 
     @action(detail=True, methods=["post"])
@@ -136,3 +166,10 @@ def accounts_receivable(request):
     data.sort(key=lambda x: -x["outstanding"])
     total_ar = sum(d["outstanding"] for d in data)
     return Response({"total_ar": total_ar, "companies": data})
+
+
+class TransactionCodeViewSet(viewsets.ModelViewSet):
+    queryset = TransactionCode.objects.all()
+    serializer_class = TransactionCodeSerializer
+    filterset_fields = ["hotel", "category", "is_active"]
+    search_fields = ["code", "name_ar", "name_en"]

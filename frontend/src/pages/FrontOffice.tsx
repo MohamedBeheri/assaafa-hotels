@@ -1,8 +1,9 @@
 import React from "react";
 import { Card, Tabs, Table, Button, Tag, Space, Badge, Empty, App as AntApp } from "antd";
 import {
-  LoginOutlined, LogoutOutlined, CrownOutlined, HomeOutlined, ThunderboltOutlined,
+  LoginOutlined, LogoutOutlined, CrownOutlined, HomeOutlined, ThunderboltOutlined, PrinterOutlined,
 } from "@ant-design/icons";
+import { printRegCard } from "../components/printRegCard";
 import { useTranslation } from "react-i18next";
 import { apiHooks } from "../app/api";
 import { useApp } from "../app/context";
@@ -60,15 +61,21 @@ export default function FrontOffice() {
     guestsCol, roomsCol, stayCol, guestsInfo,
     { title: t("status"), dataIndex: "status_display", render: (v: string) => <Tag color="blue">{v}</Tag> },
     { title: t("actions"), render: (_: any, r: any) => (
-      <Button type="primary" size="small" icon={<LoginOutlined />}
-        onClick={() => doAction(r.id, "check_in")}>{t("checkInAction")}</Button>
+      <Space>
+        <Button type="primary" size="small" icon={<LoginOutlined />}
+          onClick={() => doAction(r.id, "check_in")}>{t("checkInAction")}</Button>
+        <Button size="small" icon={<PrinterOutlined />} onClick={() => printRegCard(r)}>{t("regCard")}</Button>
+      </Space>
     ) },
   ];
   const inHouseCols = [
     { title: t("code"), dataIndex: "code" }, guestsCol, roomsCol, stayCol, guestsInfo, balanceCol,
     { title: t("actions"), render: (_: any, r: any) => (
-      <Button size="small" icon={<LogoutOutlined />}
-        onClick={() => doAction(r.id, "check_out")}>{t("checkOutAction")}</Button>
+      <Space>
+        <Button size="small" icon={<LogoutOutlined />}
+          onClick={() => doAction(r.id, "check_out")}>{t("checkOutAction")}</Button>
+        <Button size="small" icon={<PrinterOutlined />} onClick={() => printRegCard(r)}>{t("regCard")}</Button>
+      </Space>
     ) },
   ];
   const departuresCols = [

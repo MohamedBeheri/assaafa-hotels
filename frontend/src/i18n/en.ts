@@ -1,4 +1,11 @@
 export default {
+  transactionCodes: "Transaction Codes",
+  regCard: "Reg Card",
+  adjust: "Adjust",
+  adjustReason: "Adjustment reason (required)",
+  fixedCharges: "Fixed Charges",
+  addFixed: "Add fixed charge",
+  frequency: "Frequency",
   roomStatusBoard: "Room Status",
   maxAvailable: "Max Available Rooms",
   expectedArr: "Expected Arrivals",

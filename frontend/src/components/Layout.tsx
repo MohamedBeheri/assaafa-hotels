@@ -5,7 +5,7 @@ import {
   FileTextOutlined, ShoppingCartOutlined, DollarOutlined, UserOutlined,
   GlobalOutlined, LogoutOutlined, AppstoreOutlined, TableOutlined,
   ClearOutlined, TagsOutlined, BarChartOutlined, CoffeeOutlined, CompassOutlined,
-  ThunderboltOutlined, MoonOutlined, SearchOutlined, ShopOutlined, AccountBookOutlined, UsergroupAddOutlined,
+  ThunderboltOutlined, MoonOutlined, SearchOutlined, ShopOutlined, AccountBookOutlined, UsergroupAddOutlined, NumberOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -37,6 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { key: "/invoices", icon: <FileTextOutlined />, label: t("invoices") },
     { key: "/companies", icon: <ShopOutlined />, label: t("companies") },
     { key: "/accounts-receivable", icon: <AccountBookOutlined />, label: t("accountsReceivable") },
+    { key: "/transaction-codes", icon: <NumberOutlined />, label: t("transactionCodes") },
     { key: "/pos", icon: <ShoppingCartOutlined />, label: t("pos") },
     { key: "/menu", icon: <CoffeeOutlined />, label: t("menuMgmt") },
     { key: "/housekeeping", icon: <ClearOutlined />, label: t("housekeeping") },

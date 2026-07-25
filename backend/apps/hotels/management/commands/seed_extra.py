@@ -143,4 +143,14 @@ class Command(BaseCommand):
                 _rm.save()
             self.stdout.write("✓ حالات التدبير")
 
+        # 8) أكواد البنود القياسية
+        from apps.billing.models import TransactionCode
+        for c, ar, en, cat, pr in [
+            ("1000","إقامة غرفة","Room","room",0),("1500","ضريبة القيمة المضافة","VAT","tax",0),
+            ("2000","إفطار","Breakfast","fnb",45),("2100","غداء","Lunch","fnb",65),
+            ("2200","عشاء","Dinner","fnb",75),("3000","غسيل وكوي","Laundry","service",30),
+            ("3100","موقف سيارات","Parking","service",25),("3200","توصيل مطار","Airport Transfer","service",120)]:
+            TransactionCode.objects.get_or_create(code=c, defaults={
+                "name_ar": ar, "name_en": en, "category": cat, "default_price": pr})
+
         self.stdout.write(self.style.SUCCESS("تمت التعبئة الإضافية ✓"))

@@ -1,7 +1,7 @@
 import React from "react";
 import {
   Card, Table, Tag, Button, Drawer, Descriptions, Divider, Form,
-  InputNumber, Select, App as AntApp, Statistic, Row, Col, Input, Space,
+  InputNumber, Select, App as AntApp, Statistic, Row, Col, Input, Space, Modal,
 } from "antd";
 import { useTranslation } from "react-i18next";
 import { apiHooks } from "../app/api";
@@ -19,10 +19,36 @@ export default function Invoices() {
   const [invoiceAction] = apiHooks.useInvoiceActionMutation();
   const { data: services } = apiHooks.useGetServicesQuery();
   const { data: companies } = apiHooks.useGetCompaniesQuery();
+  const [reservationAction] = apiHooks.useReservationActionMutation();
   const [svcId, setSvcId] = React.useState<number | undefined>();
   const [couponCode, setCouponCode] = React.useState("");
   const [sel, setSel] = React.useState<any>(null);
   const [form] = Form.useForm();
+  // تسوية بند
+  const [adj, setAdj] = React.useState<any>(null);
+  const [adjMode, setAdjMode] = React.useState("percent");
+  const [adjValue, setAdjValue] = React.useState<number>(0);
+  const [adjReason, setAdjReason] = React.useState("");
+  const doAdjust = async () => {
+    if (!adjReason.trim()) { message.warning("سبب التسوية إلزامي"); return; }
+    try {
+      await invoiceAction({ id: current.id, action: "adjust_charge",
+        body: { charge: adj.id, mode: adjMode, value: adjValue, reason: adjReason } }).unwrap();
+      message.success(t("saved")); setAdj(null); setAdjValue(0); setAdjReason("");
+    } catch (e: any) { message.error(e?.data?.detail || "خطأ"); }
+  };
+  // رسم ثابت
+  const [fixDesc, setFixDesc] = React.useState("");
+  const [fixAmount, setFixAmount] = React.useState<number>(0);
+  const [fixFreq, setFixFreq] = React.useState("daily");
+  const addFixed = async () => {
+    if (!fixDesc.trim() || !fixAmount) return;
+    try {
+      await reservationAction({ id: current.reservation, action: "add_fixed_charge",
+        body: { description: fixDesc, amount: fixAmount, frequency: fixFreq } }).unwrap();
+      message.success(t("saved")); setFixDesc(""); setFixAmount(0);
+    } catch { message.error("خطأ"); }
+  };
 
   // إبقاء تفاصيل الفاتورة المفتوحة محدثة
   const current = (data?.results || []).find((i: any) => i.id === sel?.id) || sel;
@@ -87,11 +113,14 @@ export default function Invoices() {
             )}
             <Table size="small" rowKey="id" pagination={false} dataSource={current.charges}
               columns={[
-                { title: "الوصف", dataIndex: "description" },
-                { title: t("total"), dataIndex: "total" },
-                { title: t("window"), dataIndex: "window", width: 90,
+                { title: "الكود", dataIndex: "tc_code", width: 60, render: (v: string) => v ? <Tag style={{ fontFamily: "monospace" }}>{v}</Tag> : "—" },
+                { title: "الوصف", dataIndex: "description",
+                  render: (v: string, r: any) => <span>{v}{r.reason && <div style={{ fontSize: 11, color: "#C0392B" }}>⤷ {r.reason}</div>}</span> },
+                { title: t("total"), dataIndex: "total",
+                  render: (v: any) => <b style={{ color: Number(v) < 0 ? "#C0392B" : undefined }}>{v}</b> },
+                { title: t("window"), dataIndex: "window", width: 66,
                   render: (w: number, r: any) => (
-                    <Select size="small" value={w || 1} style={{ width: 62 }}
+                    <Select size="small" value={w || 1} style={{ width: 56 }}
                       options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
                       onChange={async (v) => {
                         try {
@@ -99,6 +128,9 @@ export default function Invoices() {
                         } catch { message.error("خطأ"); }
                       }} />
                   ) },
+                { title: "", width: 44, render: (_: any, r: any) => Number(r.total) > 0 ? (
+                  <Button size="small" type="text" onClick={() => { setAdj(r); setAdjValue(0); setAdjReason(""); }}>✎</Button>
+                ) : null },
               ]} />
             <Descriptions size="small" column={1} style={{ marginTop: 12 }}>
               <Descriptions.Item label={t("vat")}>{current.vat_amount} ر.س</Descriptions.Item>
@@ -147,11 +179,39 @@ export default function Invoices() {
               columns={[
                 { title: t("amount"), dataIndex: "amount" },
                 { title: t("method"), dataIndex: "method_display" },
+                { title: "مرجع", dataIndex: "reference" },
                 { title: t("date"), dataIndex: "paid_at", render: (v: string) => v?.slice(0, 16).replace("T", " ") },
               ]} />
+
+            {current.reservation && (
+              <>
+                <Divider>🔁 {t("fixedCharges")}</Divider>
+                <Space wrap>
+                  <Input placeholder="الوصف (موقف/إفطار)" value={fixDesc} onChange={(e) => setFixDesc(e.target.value)} style={{ width: 150 }} />
+                  <InputNumber placeholder="المبلغ" value={fixAmount} onChange={(v) => setFixAmount(v || 0)} style={{ width: 90 }} />
+                  <Select value={fixFreq} onChange={setFixFreq} style={{ width: 100 }}
+                    options={[{ value: "daily", label: "يومي" }, { value: "weekly", label: "أسبوعي" }, { value: "once", label: "مرة" }]} />
+                  <Button onClick={addFixed} disabled={!fixDesc || !fixAmount}>{t("addFixed")}</Button>
+                </Space>
+              </>
+            )}
           </>
         )}
       </Drawer>
+
+      <Modal open={!!adj} title={`${t("adjust")} — ${adj?.description}`} onCancel={() => setAdj(null)} onOk={doAdjust} okText={t("adjust")} destroyOnHidden>
+        <p style={{ color: "#8c8c8c" }}>البند: <b>{adj?.total} ر.س</b> — يُرحّل بند سالب مقابل (لا يُحذف الأصل)</p>
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Space>
+            <Select value={adjMode} onChange={setAdjMode} style={{ width: 110 }}
+              options={[{ value: "percent", label: "نسبة %" }, { value: "amount", label: "مبلغ" }]} />
+            <InputNumber value={adjValue} onChange={(v) => setAdjValue(v || 0)} min={0}
+              addonAfter={adjMode === "percent" ? "%" : "ر.س"} style={{ width: 150 }} placeholder="القيمة" />
+          </Space>
+          <Input.TextArea rows={2} value={adjReason} onChange={(e) => setAdjReason(e.target.value)}
+            placeholder={t("adjustReason")} />
+        </Space>
+      </Modal>
     </Card>
   );
 }

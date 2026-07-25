@@ -240,9 +240,14 @@ def front_office(request):
             "id": r.id, "code": r.code,
             "guest": r.guest.full_name, "phone": r.guest.phone,
             "nationality": r.guest.nationality, "is_vip": r.guest.is_vip,
+            "guest_detail": {"full_name": r.guest.full_name, "nationality": r.guest.nationality,
+                             "id_type": r.guest.id_type, "id_number": r.guest.id_number,
+                             "phone": r.guest.phone, "email": r.guest.email},
+            "hotel_name": r.hotel.name_ar,
             "rooms": [{"number": rr.room.number, "type": rr.room_type.name_ar} for rr in r.rooms.all()],
             "check_in": r.check_in.isoformat(), "check_out": r.check_out.isoformat(),
             "nights": r.nights, "adults": r.adults, "children": r.children,
+            "rooms_total": float(r.rooms_total),
             "status": r.status, "status_display": r.get_status_display(),
             "source": r.source, "source_display": r.get_source_display(),
             "balance": balance,
@@ -349,6 +354,12 @@ def night_audit_run(request):
             if rr.room.status in (Room.Status.RESERVED,):
                 rr.room.status = Room.Status.AVAILABLE
                 rr.room.save()
+
+    # 1.5) ترحيل الرسوم الثابتة للمقيمين
+    from apps.reservations.views import ReservationViewSet as _RV
+    _rv = _RV()
+    for r in reservations.filter(status=Reservation.Status.CHECKED_IN):
+        _rv._post_fixed_charges(r, today)
 
     # 2) لقطة اليوم
     total_rooms = rooms.count() or 1

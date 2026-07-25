@@ -1,4 +1,11 @@
 export default {
+  transactionCodes: "أكواد البنود",
+  regCard: "بطاقة تسجيل",
+  adjust: "تسوية",
+  adjustReason: "سبب التسوية (إلزامي)",
+  fixedCharges: "رسوم ثابتة",
+  addFixed: "إضافة رسم ثابت",
+  frequency: "التكرار",
   roomStatusBoard: "حالة الغرف",
   maxAvailable: "أقصى غرف متاحة",
   expectedArr: "وصول متوقع",

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Reservation, ReservationRoom, Deposit, GroupBlock, BlockRoom
+from .models import Reservation, ReservationRoom, Deposit, GroupBlock, BlockRoom, FixedCharge
 from apps.guests.serializers import GuestSerializer
 
 
@@ -26,6 +26,7 @@ class ReservationSerializer(serializers.ModelSerializer):
     rooms_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     deposits = serializers.SerializerMethodField()
     deposit_total = serializers.SerializerMethodField()
+    fixed_charges = serializers.SerializerMethodField()
 
     class Meta:
         model = Reservation
@@ -39,6 +40,11 @@ class ReservationSerializer(serializers.ModelSerializer):
     def get_deposit_total(self, obj):
         from decimal import Decimal
         return float(sum((d.amount for d in obj.deposits.filter(is_refunded=False)), Decimal("0")))
+
+    def get_fixed_charges(self, obj):
+        return [{"id": f.id, "description": f.description, "amount": float(f.amount),
+                 "frequency": f.frequency, "frequency_display": f.get_frequency_display(),
+                 "is_active": f.is_active} for f in obj.fixed_charges.all()]
 
     def create(self, validated_data):
         rooms = validated_data.pop("rooms", [])

@@ -137,6 +137,7 @@ export const api = createApi({
       ...crud("Housekeeping", "housekeeping/", "Room"),
       ...crud("Maintenance", "maintenance/", "Room"),
       ...crud("Coupons", "coupons/", "Invoice"),
+      ...crud("TransactionCodes", "transaction-codes/", "Invoice"),
       ...crud("GuestDocuments", "guest-documents/", "Guest"),
       ...crud("Companies", "companies/", "Guest"),
       ...crud("GroupBlocks", "group-blocks/", "Reservation"),

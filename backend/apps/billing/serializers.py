@@ -1,10 +1,11 @@
 from rest_framework import serializers
-from .models import Invoice, Charge, Payment
+from .models import Invoice, Charge, Payment, TransactionCode
 
 
 class ChargeSerializer(serializers.ModelSerializer):
     total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     kind_display = serializers.CharField(source="get_kind_display", read_only=True)
+    tc_code = serializers.CharField(source="transaction_code.code", read_only=True, default=None)
 
     class Meta:
         model = Charge
@@ -63,4 +64,13 @@ class CouponSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Coupon
+        fields = "__all__"
+
+
+class TransactionCodeSerializer(serializers.ModelSerializer):
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
+    hotel_name = serializers.CharField(source="hotel.name_ar", read_only=True, default="كل الفنادق")
+
+    class Meta:
+        model = TransactionCode
         fields = "__all__"

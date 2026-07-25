@@ -24,6 +24,7 @@ import NightAudit from "./pages/NightAudit";
 import Companies from "./pages/Companies";
 import AccountsReceivable from "./pages/AccountsReceivable";
 import GroupBlocks from "./pages/GroupBlocks";
+import TransactionCodes from "./pages/TransactionCodes";
 import PublicSite from "./site/PublicSite";
 
 export default function App() {
@@ -61,6 +62,7 @@ export default function App() {
               <Route path="/accounts-receivable" element={<AccountsReceivable />} />
               <Route path="/pos" element={<POS />} />
               <Route path="/menu" element={<Menu />} />
+              <Route path="/transaction-codes" element={<TransactionCodes />} />
               <Route path="/finance" element={<Finance />} />
               <Route path="/hotels" element={<Hotels />} />
               <Route path="/room-types" element={<RoomTypes />} />
