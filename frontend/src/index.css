@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@400;500;700&display=swap');
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+body { font-family: 'Cairo', 'Tajawal', sans-serif; background: #F7F4EC; }
+.brand-gradient { background: linear-gradient(135deg, #8CC152 0%, #6FA23C 100%); }
+.login-bg {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #6FA23C 0%, #8CC152 55%, #B8985A 100%);
+}
+.stat-card { border-radius: 14px; overflow: hidden; }
+.logo-box { display:flex; align-items:center; gap:10px; }
+
+/* تمييز الحجوزات الأونلاين المعلقة */
+.row-online-pending td { background: #FDF6E5 !important; }
+.row-online-pending:hover td { background: #FAEFD4 !important; }
+
+/* رابط موقع العميل في الشريط الجانبي — منفصل جمالياً */
+.guest-site-link {
+  display: flex; align-items: center; gap: 11px; margin: 12px; padding: 12px 14px;
+  border-radius: 14px; text-decoration: none;
+  background: linear-gradient(135deg, #1F3320 0%, #2C4A2B 55%, #6FA23C 160%);
+  box-shadow: 0 6px 18px rgba(31,51,32,.25); transition: transform .18s, box-shadow .18s;
+  position: relative; overflow: hidden;
+}
+.guest-site-link::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(120px 60px at 85% 0%, rgba(184,152,90,.5), transparent 70%);
+  opacity: .8;
+}
+.guest-site-link:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(31,51,32,.35); }
+.guest-site-link .gsl-icon {
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; z-index: 1;
+  background: rgba(255,255,255,.14); color: #B5D98E;
+  display: grid; place-items: center; font-size: 19px;
+}
+.guest-site-link .gsl-text { z-index: 1; line-height: 1.25; }
+.guest-site-link .gsl-text b { display: block; color: #fff; font-size: 13.5px; font-weight: 800; }
+.guest-site-link .gsl-text span { color: #C9D6BC; font-size: 10.5px; }
+.guest-site-link .gsl-arrow { color: #B8985A; font-size: 15px; z-index: 1; margin-inline-start: auto; }

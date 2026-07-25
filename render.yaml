@@ -1,0 +1,28 @@
+databases:
+  - name: assaafa-db
+    plan: free
+    databaseName: assaafa
+    user: assaafa
+
+services:
+  - type: web
+    name: assaafa-hotels
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application"
+    healthCheckPath: /api/public/site/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: assaafa-db
+          property: connectionString
