@@ -1,9 +1,4 @@
-databases:
-  - name: assaafa-db
-    plan: free
-    databaseName: assaafa
-    user: assaafa
-
+# نشر تجريبي — خدمة واحدة على الباقة المجانية (SQLite، بدون قاعدة مُدارة)
 services:
   - type: web
     name: assaafa-hotels
@@ -22,7 +17,3 @@ services:
         value: "False"
       - key: ALLOWED_HOSTS
         value: ".onrender.com"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: assaafa-db
-          property: connectionString
