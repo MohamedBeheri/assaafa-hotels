@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const baseQuery = fetchBaseQuery({
+const rawBaseQuery = fetchBaseQuery({
   baseUrl: (import.meta.env.VITE_API_URL || "http://127.0.0.1:8020/api").replace(/\/?$/, "/"),
   prepareHeaders: (headers) => {
     const token = localStorage.getItem("access");
@@ -8,6 +8,17 @@ const baseQuery = fetchBaseQuery({
     return headers;
   },
 });
+
+// عند انتهاء صلاحية الجلسة (401): امسح التوكن وارجع لتسجيل الدخول بدل إظهار خطأ غامض
+const baseQuery: typeof rawBaseQuery = async (args, apiCtx, extra) => {
+  const result = await rawBaseQuery(args, apiCtx, extra);
+  if (result.error && result.error.status === 401 && localStorage.getItem("access")) {
+    localStorage.removeItem("access");
+    localStorage.removeItem("user");
+    window.location.href = "/";
+  }
+  return result;
+};
 
 const TAGS = ["Hotel", "Room", "RoomType", "Guest", "Reservation", "Invoice",
   "Payment", "Product", "Category", "Order", "Expense", "Employee", "User", "Dashboard"] as const;
