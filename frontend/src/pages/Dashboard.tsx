@@ -54,15 +54,32 @@ export default function Dashboard() {
   const nav = useNavigate();
   const { hotel } = useApp();
   const params = hotel ? { hotel } : undefined;
-  const { data: b } = apiHooks.useBoardQuery(params);
-  const { data } = apiHooks.useDashboardQuery(params);
+  const { data: b, isError: bErr, refetch: refetchB } = apiHooks.useBoardQuery(params);
+  const { data, isError: dErr, refetch: refetchD } = apiHooks.useDashboardQuery(params);
   const [updateRes] = apiHooks.useUpdateReservationsMutation();
   const confirmRes = async (id: number) => {
     try { await updateRes({ id, status: "confirmed" }).unwrap(); message.success(t("saved")); }
     catch { message.error("خطأ"); }
   };
 
-  if (!b || !data) return <Spin size="large" style={{ display: "block", marginTop: 80 }} />;
+  // خطأ في التحميل (مثلاً انقطاع/إقلاع الخادم البارد) — رسالة + إعادة محاولة بدل التحميل اللانهائي
+  if (bErr || dErr) return (
+    <div style={{ textAlign: "center", marginTop: 100 }}>
+      <div style={{ fontSize: 44, marginBottom: 10 }}>⏳</div>
+      <h3 style={{ color: BRAND.greenDark, margin: 0 }}>تعذّر تحميل لوحة التحكم</h3>
+      <p style={{ color: "#8c8c8c", maxWidth: 420, margin: "8px auto 18px" }}>
+        قد يكون الخادم في وضع الإقلاع (النسخة التجريبية المجانية تحتاج ثوانٍ للاستيقاظ). جرّب إعادة المحاولة.
+      </p>
+      <Button type="primary" size="large" onClick={() => { refetchB(); refetchD(); }}>إعادة المحاولة</Button>
+    </div>
+  );
+
+  if (!b || !data) return (
+    <div style={{ textAlign: "center", marginTop: 100 }}>
+      <Spin size="large" />
+      <p style={{ color: "#8c8c8c", marginTop: 16 }}>جارٍ تحميل لوحة التحكم… قد يستغرق ثوانٍ عند أول فتح.</p>
+    </div>
+  );
   const p = b.projections;
 
   return (
