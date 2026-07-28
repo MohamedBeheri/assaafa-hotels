@@ -54,7 +54,14 @@ class Reservation(models.Model):
     def save(self, *args, **kwargs):
         if not self.code:
             prefix = self.hotel.code if self.hotel_id else "RES"
-            self.code = f"{prefix}-{timezone.now().strftime('%y%m%d%H%M%S')}"
+            base = f"{prefix}-{timezone.now().strftime('%y%m%d%H%M%S')}"
+            # ضمان التفرّد حتى لو أُنشئت عدة حجوزات في نفس الثانية (البذر/الإنشاء السريع)
+            code = base
+            n = 0
+            while self.__class__.objects.filter(code=code).exclude(pk=self.pk).exists():
+                n += 1
+                code = f"{base}{n:02d}"[:20]
+            self.code = code
         super().save(*args, **kwargs)
 
     def __str__(self):

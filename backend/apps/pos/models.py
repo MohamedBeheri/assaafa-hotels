@@ -72,7 +72,14 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            self.number = f"POS-{timezone.now().strftime('%y%m%d%H%M%S')}"
+            base = f"POS-{timezone.now().strftime('%y%m%d%H%M%S')}"
+            # ضمان التفرّد حتى لو أُنشئت عدة طلبات في نفس الثانية (البذر/الإنشاء السريع)
+            number = base
+            n = 0
+            while self.__class__.objects.filter(number=number).exclude(pk=self.pk).exists():
+                n += 1
+                number = f"{base}{n:02d}"[:25]
+            self.number = number
         super().save(*args, **kwargs)
 
     @property

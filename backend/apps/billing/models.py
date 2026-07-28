@@ -32,7 +32,14 @@ class Invoice(models.Model):
     def save(self, *args, **kwargs):
         if not self.number:
             prefix = self.hotel.code if self.hotel_id else "INV"
-            self.number = f"{prefix}-{timezone.now().strftime('%y%m%d%H%M%S')}"
+            base = f"{prefix}-{timezone.now().strftime('%y%m%d%H%M%S')}"
+            # ضمان التفرّد حتى لو أُنشئت عدة فواتير في نفس الثانية (البذر/الإنشاء السريع)
+            number = base
+            n = 0
+            while self.__class__.objects.filter(number=number).exclude(pk=self.pk).exists():
+                n += 1
+                number = f"{base}{n:02d}"[:25]
+            self.number = number
         super().save(*args, **kwargs)
 
     @property
