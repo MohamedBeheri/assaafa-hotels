@@ -141,6 +141,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <GlobalOutlined className="gsl-arrow" />
         </a>
+        {/* فوتر كفو */}
+        <div style={{ padding: "10px 12px", borderTop: "1px solid #f0ede4", textAlign: "center" }}>
+          <span style={{ fontSize: 10, color: "#9c9683" }}>
+            تصميم وتطوير بواسطة{" "}
+            <a href="https://kaffo.co" target="_blank" rel="noopener noreferrer"
+              style={{ color: BRAND.gold, fontWeight: 700, textDecoration: "none" }}>
+              شركة كفو Kaffo.co
+            </a>
+          </span>
+        </div>
       </Sider>
       <Layout>
         <Header style={{ display: "flex", alignItems: "center", justifyContent: "space-between",

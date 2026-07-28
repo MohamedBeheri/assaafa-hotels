@@ -9,6 +9,7 @@ import { store } from "./app/store";
 import { theme } from "./theme";
 import i18n from "./i18n";
 import App from "./App";
+import SplashScreen from "./components/SplashScreen";
 import "./index.css";
 
 function Root() {
@@ -24,6 +25,7 @@ function Root() {
   return (
     <ConfigProvider theme={theme} direction={lang === "ar" ? "rtl" : "ltr"}
       locale={lang === "ar" ? arEG : enUS}>
+      <SplashScreen />
       <App />
     </ConfigProvider>
   );
