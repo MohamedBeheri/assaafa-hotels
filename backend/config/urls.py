@@ -39,8 +39,14 @@ urlpatterns = [
 ]
 
 # خدمة الميديا (صور الغرف/البانرات/المستندات) في كل الأوضاع — مناسب للتجريبي
+def cached_media_serve(request, path):
+    """يخدم الميديا مع كاش طويل حتى يخزّنها المتصفح ولا يعيد طلبها من الخادم البطيء."""
+    response = serve(request, path, document_root=settings.MEDIA_ROOT)
+    response["Cache-Control"] = "public, max-age=604800, immutable"  # أسبوع
+    return response
+
 urlpatterns += [
-    re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
+    re_path(r"^media/(?P<path>.*)$", cached_media_serve),
 ]
 
 # catch-all لتطبيق الواجهة أحادي الصفحة (يجب أن يكون الأخير)

@@ -10,7 +10,10 @@ import { theme } from "./theme";
 import i18n from "./i18n";
 import App from "./App";
 import SplashScreen from "./components/SplashScreen";
+import { installImageRetry } from "./imgRetry";
 import "./index.css";
+
+installImageRetry();
 
 function Root() {
   const [lang, setLang] = React.useState(i18n.language);
